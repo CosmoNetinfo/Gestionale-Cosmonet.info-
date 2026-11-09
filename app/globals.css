@@ -1,0 +1,16 @@
+@import "./tokens.css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: Inter, "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+/* Solo desktop: sotto i 1280px la pagina scorre in orizzontale, nessun adattamento mobile. */
+body {
+  min-width: 1280px;
+}

@@ -1,0 +1,27 @@
+/*
+  Cosmo Control — design tokens.
+  Tutti i colori dell'app sono qui: cambia questi valori e cambia tutto lo stile.
+  Palette provvisoria in stile clinico, da sostituire con quella definitiva.
+*/
+:root {
+  --canvas: #f4f7fa;
+  --surface: #ffffff;
+  --line: #dde5ec;
+  --ink: #1f2d3a;
+  --muted: #6b7c8c;
+
+  --primary: #1f6fb2;
+  --primary-dark: #174f80;
+  --primary-soft: #e6f0f9;
+  --teal: #14a3a0;
+
+  --ok: #2e9e6b;
+  --ok-soft: #e5f5ec;
+  --warn: #b78100;
+  --warn-soft: #fbf1d6;
+  --danger: #d64545;
+  --danger-soft: #fbe8e8;
+
+  --radius: 10px;
+  --sidebar-width: 248px;
+}
