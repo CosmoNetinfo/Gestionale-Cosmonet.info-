@@ -434,3 +434,120 @@ export async function getQueryPages(): Promise<{ rows: QueryPage[]; note?: strin
     note,
   };
 }
+
+/* ------------------------------------------------------------------ */
+/* Indicizzazione (URL Inspection API) e sitemap                       */
+/* ------------------------------------------------------------------ */
+
+export interface IndexStatus {
+  verdict: string; // PASS | NEUTRAL | FAIL | PARTIAL | VERDICT_UNSPECIFIED
+  coverage: string; // es. "Submitted and indexed"
+  lastCrawl?: string;
+  googleCanonical?: string;
+  userCanonical?: string;
+  error?: string;
+}
+
+async function gscAuth(): Promise<{ token: string; site: string } | { error: string }> {
+  const raw = process.env.GSC_SERVICE_ACCOUNT_JSON;
+  const site = process.env.GSC_SITE;
+  if (!raw || !site) return { error: "Search Console non collegato" };
+  try {
+    const creds = JSON.parse(raw) as { client_email: string; private_key: string };
+    return { token: await getAccessToken(creds.client_email, creds.private_key), site };
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
+}
+
+/** Stato di indicizzazione di un URL secondo Google. */
+export async function inspectUrl(url: string, auth?: { token: string; site: string }): Promise<IndexStatus> {
+  const a = auth ?? (await gscAuth());
+  if ("error" in a) return { verdict: "ERROR", coverage: "", error: a.error };
+  try {
+    const res = await fetch("https://searchconsole.googleapis.com/v1/urlInspection/index:inspect", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${a.token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ inspectionUrl: url, siteUrl: a.site, languageCode: "it-IT" }),
+      next: { revalidate: 3600 },
+    });
+    if (!res.ok) return { verdict: "ERROR", coverage: "", error: `errore ${res.status}` };
+    const r = ((await res.json()) as {
+      inspectionResult?: {
+        indexStatusResult?: {
+          verdict?: string;
+          coverageState?: string;
+          lastCrawlTime?: string;
+          googleCanonical?: string;
+          userCanonical?: string;
+        };
+      };
+    }).inspectionResult?.indexStatusResult;
+    return {
+      verdict: r?.verdict ?? "VERDICT_UNSPECIFIED",
+      coverage: r?.coverageState ?? "",
+      lastCrawl: r?.lastCrawlTime,
+      googleCanonical: r?.googleCanonical,
+      userCanonical: r?.userCanonical,
+    };
+  } catch (e) {
+    return { verdict: "ERROR", coverage: "", error: (e as Error).message };
+  }
+}
+
+/** Controlla più URL, 5 alla volta (la quota di Google è di 600 richieste al minuto). */
+export async function inspectMany(urls: string[]): Promise<Map<string, IndexStatus>> {
+  const out = new Map<string, IndexStatus>();
+  const a = await gscAuth();
+  for (let i = 0; i < urls.length; i += 5) {
+    const group = urls.slice(i, i + 5);
+    const res = await Promise.all(group.map((u) => inspectUrl(u, "error" in a ? undefined : a)));
+    group.forEach((u, j) => out.set(u, res[j]));
+  }
+  return out;
+}
+
+export interface SitemapInfo {
+  path: string;
+  lastDownloaded?: string;
+  errors: number;
+  warnings: number;
+  submitted: number;
+  isPending: boolean;
+}
+
+/** Sitemap inviate a Google con errori e numero di URL. */
+export async function listSitemaps(): Promise<{ sitemaps: SitemapInfo[]; note?: string }> {
+  const a = await gscAuth();
+  if ("error" in a) return { sitemaps: [], note: a.error };
+  try {
+    const res = await fetch(
+      `https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(a.site)}/sitemaps`,
+      { headers: { Authorization: `Bearer ${a.token}` }, next: { revalidate: 3600 } },
+    );
+    if (!res.ok) return { sitemaps: [], note: `Search Console errore ${res.status}` };
+    const list =
+      ((await res.json()) as {
+        sitemap?: {
+          path: string;
+          lastDownloaded?: string;
+          errors?: string;
+          warnings?: string;
+          isPending?: boolean;
+          contents?: { submitted?: string }[];
+        }[];
+      }).sitemap ?? [];
+    return {
+      sitemaps: list.map((s) => ({
+        path: s.path,
+        lastDownloaded: s.lastDownloaded,
+        errors: Number(s.errors ?? 0),
+        warnings: Number(s.warnings ?? 0),
+        submitted: (s.contents ?? []).reduce((t, c) => t + Number(c.submitted ?? 0), 0),
+        isPending: Boolean(s.isPending),
+      })),
+    };
+  } catch (e) {
+    return { sitemaps: [], note: (e as Error).message };
+  }
+}

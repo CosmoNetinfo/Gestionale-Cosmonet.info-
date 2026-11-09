@@ -1,4 +1,6 @@
 import { getMemoSummary } from "@/lib/memo";
+import { getRepos, type Repo } from "@/lib/github";
+import { daysSince } from "@/lib/review";
 import { Badge, Card, DemoBanner, Kpi, PageHeader } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
@@ -7,7 +9,14 @@ const KIND = { note: "Appunto", idea: "Idea", project: "Progetto" } as const;
 const STATUS = { draft: "Bozza", active: "In corso", done: "Completato", archived: "Archiviato" } as const;
 
 export default async function Memo() {
-  const { summary, url, note } = await getMemoSummary();
+  const [{ summary, url, note }, { repos, demo: reposDemo }] = await Promise.all([getMemoSummary(), getRepos()]);
+  // Abbino un progetto alla sua repository quando i nomi coincidono (ignorando spazi e simboli)
+  const flat = (t: string) => t.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const repoOf = (title: string): Repo | undefined => {
+    if (reposDemo) return undefined;
+    const t = flat(title);
+    return t.length < 4 ? undefined : repos.find((r) => flat(r.name) === t);
+  };
   const open = url ? (
     <a
       href={url}
@@ -61,10 +70,22 @@ export default async function Memo() {
             <ul className="divide-y divide-line">
               {projects.map((p) => {
                 const aperte = openTasks.filter((t) => t.project_id === p.id).length;
+                const repo = repoOf(p.title);
                 return (
                   <li key={p.id} className="flex items-center justify-between gap-3 py-2.5">
                     <span className="min-w-0 truncate text-sm font-medium">{p.title}</span>
                     <span className="flex shrink-0 items-center gap-2">
+                      {repo && (
+                        <a
+                          href={repo.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          title={`Repository ${repo.name}`}
+                          className="text-xs text-muted hover:text-primary"
+                        >
+                          GitHub · {repo.pushedAt ? `${daysSince(repo.pushedAt)} g fa` : "↗"}
+                        </a>
+                      )}
                       {aperte > 0 && <span className="text-xs text-muted">{aperte} attività</span>}
                       <Badge tone={p.status === "active" ? "info" : p.status === "done" ? "ok" : "neutral"}>
                         {STATUS[p.status]}

@@ -117,6 +117,13 @@ export default async function Sito({
         </div>
 
         <form action="/sito" className="flex gap-2">
+          <a
+            href={`/api/export/articoli?stato=${filtro}`}
+            title="Scarica l'elenco in CSV (si apre con Excel)"
+            className="whitespace-nowrap rounded-lg border border-line bg-surface px-3 py-2 text-sm text-muted hover:text-ink"
+          >
+            Esporta CSV
+          </a>
           <input type="hidden" name="stato" value={filtro} />
           <input type="hidden" name="sort" value={sort} />
           <input type="hidden" name="dir" value={dir} />

@@ -4,7 +4,7 @@ import { loadArticles } from "@/lib/articles";
 import { supabaseConfigured } from "@/lib/supabase";
 import { getHistoryOrNone } from "./data";
 import { segnaRivisto } from "../actions";
-import { getGscStats, getPageDaily, getPageQueries, normUrl, opportunity } from "@/lib/gsc";
+import { getGscStats, getPageDaily, getPageQueries, inspectUrl, normUrl, opportunity } from "@/lib/gsc";
 import { daysSince, daysSinceTouched, isToReview } from "@/lib/review";
 import { STATO_LABEL } from "@/lib/types";
 import { Badge, Card, DemoBanner, Kpi, PageHeader } from "@/components/ui";
@@ -24,11 +24,12 @@ export default async function Scheda({ params }: { params: { id: string } }) {
   const a = articles.find((x) => x.id === id);
   if (!a) notFound();
 
-  const [gsc, queries, daily, history] = await Promise.all([
+  const [gsc, queries, daily, history, index] = await Promise.all([
     getGscStats(),
     getPageQueries(a.url, 30),
     getPageDaily(a.url),
     getHistoryOrNone(a.url),
+    a.status === "publish" ? inspectUrl(a.url) : Promise.resolve(null),
   ]);
   const g = gsc.configured ? gsc.byUrl.get(normUrl(a.url)) : undefined;
 
@@ -112,6 +113,16 @@ export default async function Scheda({ params }: { params: { id: string } }) {
             <div className="flex justify-between"><dt className="text-muted">Pubblicato</dt><dd>{new Date(a.date).toLocaleDateString("it-IT")} · {daysSince(a.date)} g fa</dd></div>
             <div className="flex justify-between"><dt className="text-muted">Ultima modifica</dt><dd>{new Date(a.modified).toLocaleDateString("it-IT")}</dd></div>
             <div className="flex justify-between"><dt className="text-muted">Non toccato da</dt><dd>{daysSinceTouched(a)} g</dd></div>
+            {index && !index.error && (
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-muted">Google</dt>
+                <dd>
+                  <Badge tone={index.verdict === "PASS" ? "ok" : index.verdict === "FAIL" ? "danger" : "warn"}>
+                    {index.coverage || "Sconosciuto"}
+                  </Badge>
+                </dd>
+              </div>
+            )}
             <div className="flex items-center justify-between">
               <dt className="text-muted">Revisione</dt>
               <dd>
