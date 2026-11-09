@@ -116,7 +116,7 @@ export async function getArticles(): Promise<ArticlesResult> {
     }
     // Modifiche in blocco: se più di BULK articoli hanno la stessa data di modifica (giorno),
     // quella data non dice nulla sul lavoro fatto sul singolo articolo.
-    const BULK = 20;
+    const BULK = 50;
     const perDay = new Map<string, number>();
     for (const a of articles) {
       const d = a.modified.slice(0, 10);

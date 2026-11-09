@@ -229,7 +229,7 @@ export default async function Sito({
 
       <p className="mt-4 text-xs text-muted">
         “Da rivedere”: articolo pubblicato non toccato da più di {reviewDays()} giorni
-        (si conta dalla data più recente tra pubblicazione, ultima modifica vera e revisione segnata qui; le modifiche in blocco su più di 20 articoli nello stesso giorno vengono ignorate).
+        (si conta dalla data più recente tra pubblicazione, ultima modifica vera e revisione segnata qui; le modifiche in blocco su più di 50 articoli nello stesso giorno vengono ignorate).
         Click, impressioni, CTR e posizione: ultimi {gsc.days} giorni da Search Console (dati con 2-3 giorni di ritardo).
         Potenziale: impressioni non diventate click, ×1,5 se l&apos;articolo è in posizione 5-20. Più è alto, più conviene rivederlo. Clicca sulle intestazioni per ordinare.
       </p>
