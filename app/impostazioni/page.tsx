@@ -21,6 +21,10 @@ export default function Impostazioni() {
   );
   const gsc = Boolean(process.env.GSC_SERVICE_ACCOUNT_JSON && process.env.GSC_SITE);
   const sb = Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SECRET_KEY);
+  const memo = Boolean(process.env.COSMOMEMO_URL && process.env.COSMOMEMO_READ_TOKEN);
+  const dc = Boolean(process.env.DISCORD_INVITE);
+  const tg = Boolean(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID);
+  const mcp = Boolean(process.env.MCP_TOKEN);
   const gh = Boolean(process.env.GITHUB_TOKEN || process.env.GITHUB_USER);
 
   return (
@@ -35,7 +39,10 @@ export default function Impostazioni() {
             <Row label="GitHub" ok={gh} hint="GITHUB_TOKEN (o GITHUB_USER per le sole pubbliche)" />
             <Row label="Search Console" ok={gsc} hint="GSC_SERVICE_ACCOUNT_JSON, GSC_SITE" />
             <Row label="Supabase (revisioni)" ok={sb} hint="SUPABASE_URL, SUPABASE_SECRET_KEY" />
-            <Row label="Cosmo Memo" ok={false} hint="Fase 4" />
+            <Row label="Cosmo Memo" ok={memo} hint="COSMOMEMO_URL, COSMOMEMO_READ_TOKEN" />
+            <Row label="Discord" ok={dc} hint="DISCORD_INVITE" />
+            <Row label="Telegram" ok={tg} hint="TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID" />
+            <Row label="Server MCP per Claude" ok={mcp} hint="MCP_TOKEN" />
           </div>
         </Card>
 

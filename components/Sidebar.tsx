@@ -9,6 +9,7 @@ const pages = [
   { href: "/repository", label: "Repository", icon: "⌥" },
   { href: "/grafici", label: "Grafici", icon: "▥" },
   { href: "/memo", label: "Cosmo Memo", icon: "✎" },
+  { href: "/canali", label: "Canali", icon: "☰" },
   { href: "/impostazioni", label: "Impostazioni", icon: "⚙" },
 ];
 
