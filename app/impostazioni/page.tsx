@@ -19,6 +19,7 @@ export default function Impostazioni() {
   const wp = Boolean(
     process.env.WP_BASE_URL && process.env.WP_USER && process.env.WP_APP_PASSWORD,
   );
+  const gsc = Boolean(process.env.GSC_SERVICE_ACCOUNT_JSON && process.env.GSC_SITE);
   const gh = Boolean(process.env.GITHUB_TOKEN || process.env.GITHUB_USER);
 
   return (
@@ -31,7 +32,7 @@ export default function Impostazioni() {
           <div className="divide-y divide-line">
             <Row label="WordPress" ok={wp} hint="WP_BASE_URL, WP_USER, WP_APP_PASSWORD" />
             <Row label="GitHub" ok={gh} hint="GITHUB_TOKEN (o GITHUB_USER per le sole pubbliche)" />
-            <Row label="Search Console" ok={false} hint="Fase 2" />
+            <Row label="Search Console" ok={gsc} hint="GSC_SERVICE_ACCOUNT_JSON, GSC_SITE" />
             <Row label="Cosmo Memo" ok={false} hint="Fase 4" />
           </div>
         </Card>

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getArticles } from "@/lib/wordpress";
+import { getGscStats, normUrl } from "@/lib/gsc";
 import { daysSince, daysSinceTouched, isToReview, reviewDays } from "@/lib/review";
 import { STATO_LABEL, type Stato } from "@/lib/types";
 import { Badge, Card, DemoBanner, PageHeader } from "@/components/ui";
@@ -27,7 +28,7 @@ export default async function Sito({
 }: {
   searchParams: { stato?: string; q?: string };
 }) {
-  const { articles, demo, note } = await getArticles();
+  const [{ articles, demo, note }, gsc] = await Promise.all([getArticles(), getGscStats()]);
   const filtro = searchParams.stato ?? "publish";
   const q = (searchParams.q ?? "").trim().toLowerCase();
 
@@ -60,6 +61,7 @@ export default async function Sito({
       />
 
       {demo && note && <DemoBanner reason={note} />}
+      {!gsc.configured && gsc.note && !demo && <DemoBanner reason={gsc.note} />}
 
       <div className="mb-4 flex items-center justify-between">
         <div className="flex flex-wrap gap-2">
@@ -104,18 +106,16 @@ export default async function Sito({
               <th className="px-4 py-3 font-medium">Giorni</th>
               <th className="px-4 py-3 font-medium">Stato</th>
               <th className="px-4 py-3 font-medium">Revisione</th>
-              <th className="px-4 py-3 text-right font-medium" title="Disponibile nella fase 2">
-                Click
-              </th>
-              <th className="px-4 py-3 text-right font-medium" title="Disponibile nella fase 2">
-                Impr.
-              </th>
+              <th className="px-4 py-3 text-right font-medium" title={`Ultimi ${gsc.days} giorni`}>Click</th>
+              <th className="px-4 py-3 text-right font-medium" title={`Ultimi ${gsc.days} giorni`}>Impr.</th>
+              <th className="px-4 py-3 text-right font-medium">CTR</th>
+              <th className="px-4 py-3 text-right font-medium">Pos.</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
             {rows.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-4 py-10 text-center text-muted">
+                <td colSpan={11} className="px-4 py-10 text-center text-muted">
                   Nessun articolo con questo filtro.
                 </td>
               </tr>
@@ -150,8 +150,23 @@ export default async function Sito({
                     <span className="text-muted">—</span>
                   )}
                 </td>
-                <td className="px-4 py-3 text-right text-muted">—</td>
-                <td className="px-4 py-3 text-right text-muted">—</td>
+                {(() => {
+                  const g = gsc.configured ? gsc.byUrl.get(normUrl(a.url)) : undefined;
+                  const dash = <span className="text-muted">—</span>;
+                  const zero = gsc.configured && a.status === "publish";
+                  return (
+                    <>
+                      <td className="px-4 py-3 text-right">{g ? g.clicks : zero ? 0 : dash}</td>
+                      <td className="px-4 py-3 text-right">{g ? g.impressions : zero ? 0 : dash}</td>
+                      <td className="px-4 py-3 text-right text-muted">
+                        {g ? (g.ctr * 100).toFixed(1).replace(".", ",") + "%" : dash}
+                      </td>
+                      <td className="px-4 py-3 text-right text-muted">
+                        {g ? g.position.toFixed(1).replace(".", ",") : dash}
+                      </td>
+                    </>
+                  );
+                })()}
               </tr>
             ))}
           </tbody>
@@ -161,6 +176,7 @@ export default async function Sito({
       <p className="mt-4 text-xs text-muted">
         “Da rivedere”: articolo pubblicato non toccato da più di {reviewDays()} giorni
         (si conta dalla data più recente tra pubblicazione e ultima modifica).
+        Click, impressioni, CTR e posizione: ultimi {gsc.days} giorni da Search Console (dati con 2-3 giorni di ritardo).
       </p>
     </>
   );
