@@ -61,7 +61,7 @@ export default async function Sito({
       />
 
       {demo && note && <DemoBanner reason={note} />}
-      {!gsc.configured && gsc.note && !demo && <DemoBanner reason={gsc.note} />}
+      {!gsc.configured && gsc.note && <DemoBanner title="Attenzione." reason={gsc.note} />}
 
       <div className="mb-4 flex items-center justify-between">
         <div className="flex flex-wrap gap-2">

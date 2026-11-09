@@ -90,10 +90,10 @@ export function Badge({
   );
 }
 
-export function DemoBanner({ reason }: { reason: string }) {
+export function DemoBanner({ reason, title = "Dati dimostrativi." }: { reason: string; title?: string }) {
   return (
     <div className="mb-6 rounded-card border border-warn/30 bg-warn-soft px-4 py-3 text-sm text-warn">
-      <strong>Dati dimostrativi.</strong> {reason}
+      <strong>{title}</strong> {reason}
     </div>
   );
 }
