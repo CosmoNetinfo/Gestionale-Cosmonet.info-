@@ -220,3 +220,45 @@ export async function getPageQueries(pageUrl: string, limit = 25): Promise<{ que
     return { queries: [], note: (e as Error).message };
   }
 }
+
+export interface GscDay {
+  date: string; // YYYY-MM-DD
+  clicks: number;
+  impressions: number;
+}
+
+/** Click e impressioni di tutto il sito, giorno per giorno, ultimi GSC_DAYS giorni. */
+export async function getGscDaily(): Promise<{ days: GscDay[]; note?: string }> {
+  const raw = process.env.GSC_SERVICE_ACCOUNT_JSON;
+  const site = process.env.GSC_SITE;
+  if (!raw || !site) return { days: [], note: "Search Console non collegato" };
+  try {
+    const creds = JSON.parse(raw) as { client_email: string; private_key: string };
+    const token = await getAccessToken(creds.client_email, creds.private_key);
+    const end = new Date(Date.now() - 2 * 86400000);
+    const start = new Date(end.getTime() - GSC_DAYS * 86400000);
+    const res = await fetch(
+      `https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(site)}/searchAnalytics/query`,
+      {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          startDate: iso(start),
+          endDate: iso(end),
+          dimensions: ["date"],
+          rowLimit: 200,
+        }),
+        next: { revalidate: 3600 },
+      },
+    );
+    if (!res.ok) return { days: [], note: `Search Console errore ${res.status}` };
+    const rows = ((await res.json()) as { rows?: { keys: string[]; clicks: number; impressions: number }[] }).rows ?? [];
+    return {
+      days: rows
+        .map((r) => ({ date: r.keys[0], clicks: r.clicks, impressions: r.impressions }))
+        .sort((a, b) => a.date.localeCompare(b.date)),
+    };
+  } catch (e) {
+    return { days: [], note: (e as Error).message };
+  }
+}
