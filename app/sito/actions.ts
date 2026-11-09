@@ -8,5 +8,6 @@ export async function segnaRivisto(formData: FormData) {
   if (!Number.isInteger(id) || id <= 0) return;
   await markReviewed(id);
   revalidatePath("/sito");
+  revalidatePath(`/sito/${id}`);
   revalidatePath("/");
 }

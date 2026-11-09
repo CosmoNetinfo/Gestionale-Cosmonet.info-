@@ -8,6 +8,8 @@ import { NextResponse, type NextRequest } from "next/server";
 export function middleware(req: NextRequest) {
   // Il server MCP si protegge da solo con MCP_TOKEN (nell'indirizzo): Claude non può inserire la password.
   if (req.nextUrl.pathname.startsWith("/api/mcp/")) return NextResponse.next();
+  // Il cron di Vercel si protegge da solo con CRON_SECRET (Authorization: Bearer ...).
+  if (req.nextUrl.pathname.startsWith("/api/cron/")) return NextResponse.next();
 
   const password = process.env.APP_PASSWORD;
 

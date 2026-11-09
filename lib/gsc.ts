@@ -262,3 +262,175 @@ export async function getGscDaily(): Promise<{ days: GscDay[]; note?: string }> 
     return { days: [], note: (e as Error).message };
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* Interrogazioni aggiuntive (scheda articolo, avvisi, storico)        */
+/* ------------------------------------------------------------------ */
+
+export interface GscRow {
+  keys: string[];
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  position: number;
+}
+
+/** Interroga Search Console con paginazione (25.000 righe per pagina). */
+export async function gscRows(
+  body: Record<string, unknown>,
+  opts: { maxPages?: number; revalidate?: number } = {},
+): Promise<{ rows: GscRow[]; note?: string }> {
+  const raw = process.env.GSC_SERVICE_ACCOUNT_JSON;
+  const site = process.env.GSC_SITE;
+  if (!raw || !site) return { rows: [], note: "Search Console non collegato" };
+  try {
+    const creds = JSON.parse(raw) as { client_email: string; private_key: string };
+    const token = await getAccessToken(creds.client_email, creds.private_key);
+    const rows: GscRow[] = [];
+    const maxPages = opts.maxPages ?? 4;
+    for (let p = 0; p < maxPages; p++) {
+      const res = await fetch(
+        `https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(site)}/searchAnalytics/query`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ ...body, rowLimit: 25000, startRow: p * 25000 }),
+          ...(opts.revalidate ? { next: { revalidate: opts.revalidate } } : { cache: "no-store" as const }),
+        },
+      );
+      if (!res.ok) return { rows, note: `Search Console errore ${res.status}` };
+      const part = ((await res.json()) as { rows?: GscRow[] }).rows ?? [];
+      rows.push(...part);
+      if (part.length < 25000) break;
+    }
+    return { rows };
+  } catch (e) {
+    return { rows: [], note: (e as Error).message };
+  }
+}
+
+/** Ultimo giorno disponibile in Search Console (i dati hanno 2 giorni di ritardo). */
+export function gscEndDate(): Date {
+  return new Date(Date.now() - 2 * 86400000);
+}
+
+export const isoDate = iso;
+
+export interface GscPageDay {
+  date: string;
+  clicks: number;
+  impressions: number;
+  position: number;
+}
+
+/** Andamento giornaliero di un solo articolo (ultimi GSC_DAYS giorni). */
+export async function getPageDaily(pageUrl: string): Promise<{ days: GscPageDay[]; note?: string }> {
+  const end = gscEndDate();
+  const start = new Date(end.getTime() - GSC_DAYS * 86400000);
+  let path = "";
+  try {
+    path = new URL(pageUrl).pathname;
+  } catch {
+    return { days: [] };
+  }
+  const { rows, note } = await gscRows(
+    {
+      startDate: iso(start),
+      endDate: iso(end),
+      dimensions: ["date", "page"],
+      dimensionFilterGroups: [{ filters: [{ dimension: "page", operator: "contains", expression: path }] }],
+    },
+    { maxPages: 1 },
+  );
+  const target = normUrl(pageUrl);
+  const byDate = new Map<string, GscPageDay>();
+  for (const r of rows) {
+    if (normUrl(r.keys[1]) !== target) continue;
+    const d = byDate.get(r.keys[0]);
+    if (d) {
+      const imp = d.impressions + r.impressions;
+      d.position = imp ? (d.position * d.impressions + r.position * r.impressions) / imp : d.position;
+      d.clicks += r.clicks;
+      d.impressions = imp;
+    } else {
+      byDate.set(r.keys[0], {
+        date: r.keys[0],
+        clicks: r.clicks,
+        impressions: r.impressions,
+        position: r.position,
+      });
+    }
+  }
+  return { days: Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date)), note };
+}
+
+export interface PeriodStats {
+  clicks: number;
+  impressions: number;
+  position: number;
+}
+
+/** Ultimi 28 giorni contro i 28 precedenti, per pagina (chiave: URL normalizzato). */
+export async function getComparison(): Promise<{
+  byUrl: Map<string, { cur: PeriodStats; prev: PeriodStats }>;
+  curLabel: string;
+  prevLabel: string;
+  note?: string;
+}> {
+  const end = gscEndDate();
+  const curStart = new Date(end.getTime() - 27 * 86400000);
+  const prevEnd = new Date(curStart.getTime() - 86400000);
+  const prevStart = new Date(prevEnd.getTime() - 27 * 86400000);
+  const q = (s: Date, e: Date) =>
+    gscRows({ startDate: iso(s), endDate: iso(e), dimensions: ["page"] }, { revalidate: 3600 });
+  const [cur, prev] = await Promise.all([q(curStart, end), q(prevStart, prevEnd)]);
+  const byUrl = new Map<string, { cur: PeriodStats; prev: PeriodStats }>();
+  const empty = (): PeriodStats => ({ clicks: 0, impressions: 0, position: 0 });
+  const add = (url: string, which: "cur" | "prev", r: GscRow) => {
+    const k = normUrl(url);
+    const e = byUrl.get(k) ?? { cur: empty(), prev: empty() };
+    const t = e[which];
+    const imp = t.impressions + r.impressions;
+    t.position = imp ? (t.position * t.impressions + r.position * r.impressions) / imp : 0;
+    t.clicks += r.clicks;
+    t.impressions = imp;
+    byUrl.set(k, e);
+  };
+  for (const r of cur.rows) add(r.keys[0], "cur", r);
+  for (const r of prev.rows) add(r.keys[0], "prev", r);
+  const fmt = (s: Date, e: Date) => `${iso(s).slice(8, 10)}/${iso(s).slice(5, 7)} – ${iso(e).slice(8, 10)}/${iso(e).slice(5, 7)}`;
+  return {
+    byUrl,
+    curLabel: fmt(curStart, end),
+    prevLabel: fmt(prevStart, prevEnd),
+    note: cur.note ?? prev.note,
+  };
+}
+
+export interface QueryPage {
+  query: string;
+  page: string;
+  clicks: number;
+  impressions: number;
+  position: number;
+}
+
+/** Coppie ricerca-pagina degli ultimi GSC_DAYS giorni, per scoprire articoli in concorrenza tra loro. */
+export async function getQueryPages(): Promise<{ rows: QueryPage[]; note?: string }> {
+  const end = gscEndDate();
+  const start = new Date(end.getTime() - GSC_DAYS * 86400000);
+  const { rows, note } = await gscRows(
+    { startDate: iso(start), endDate: iso(end), dimensions: ["query", "page"] },
+    { maxPages: 4, revalidate: 3600 },
+  );
+  return {
+    rows: rows.map((r) => ({
+      query: r.keys[0],
+      page: r.keys[1],
+      clicks: r.clicks,
+      impressions: r.impressions,
+      position: r.position,
+    })),
+    note,
+  };
+}

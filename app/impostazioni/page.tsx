@@ -25,6 +25,7 @@ export default function Impostazioni() {
   const dc = Boolean(process.env.DISCORD_INVITE);
   const tg = Boolean(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID);
   const mcp = Boolean(process.env.MCP_TOKEN);
+  const storico = Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SECRET_KEY && process.env.CRON_SECRET);
   const gh = Boolean(process.env.GITHUB_TOKEN || process.env.GITHUB_USER);
 
   return (
@@ -39,6 +40,7 @@ export default function Impostazioni() {
             <Row label="GitHub" ok={gh} hint="GITHUB_TOKEN (o GITHUB_USER per le sole pubbliche)" />
             <Row label="Search Console" ok={gsc} hint="GSC_SERVICE_ACCOUNT_JSON, GSC_SITE" />
             <Row label="Supabase (revisioni)" ok={sb} hint="SUPABASE_URL, SUPABASE_SECRET_KEY" />
+            <Row label="Storico Search Console" ok={storico} hint="tabella gsc_page_daily su Supabase + CRON_SECRET" />
             <Row label="Cosmo Memo" ok={memo} hint="COSMOMEMO_URL, COSMOMEMO_READ_TOKEN" />
             <Row label="Discord" ok={dc} hint="DISCORD_INVITE" />
             <Row label="Telegram" ok={tg} hint="TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID" />

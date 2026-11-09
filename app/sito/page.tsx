@@ -31,7 +31,7 @@ export default async function Sito({
 }: {
   searchParams: { stato?: string; q?: string; sort?: string; dir?: string };
 }) {
-  const [{ articles, demo, note }, gsc] = await Promise.all([loadArticles(), getGscStats()]);
+  const [{ articles, demo, note, bulkDays }, gsc] = await Promise.all([loadArticles(), getGscStats()]);
   const filtro = searchParams.stato ?? "publish";
   const q = (searchParams.q ?? "").trim().toLowerCase();
 
@@ -159,14 +159,13 @@ export default async function Sito({
               <tr key={a.id} className="hover:bg-canvas/60">
                 <td className="px-4 py-3 text-muted">{a.id}</td>
                 <td className="max-w-md px-4 py-3">
-                  <a
-                    href={a.url}
-                    target="_blank"
-                    rel="noreferrer"
+                  <Link
+                    href={`/sito/${a.id}`}
+                    title="Apri la scheda dell'articolo"
                     className="line-clamp-1 font-medium hover:text-primary"
                   >
                     {a.title}
-                  </a>
+                  </Link>
                 </td>
                 <td className="px-4 py-3 text-muted">{a.category}</td>
                 <td className="whitespace-nowrap px-4 py-3 text-muted">
@@ -233,6 +232,21 @@ export default async function Sito({
         Click, impressioni, CTR e posizione: ultimi {gsc.days} giorni da Search Console (dati con 2-3 giorni di ritardo).
         Potenziale: impressioni non diventate click, ×1,5 se l&apos;articolo è in posizione 5-20. Più è alto, più conviene rivederlo. Clicca sulle intestazioni per ordinare.
       </p>
+      {bulkDays && bulkDays.length > 0 && (
+        <details className="mt-3 text-xs text-muted">
+          <summary className="cursor-pointer hover:text-ink">
+            Giorni di modifica in blocco ignorati ({bulkDays.length})
+          </summary>
+          <p className="mt-2">
+            In questi giorni molti articoli risultano modificati insieme (di solito un aggiornamento di plugin o tema),
+            quindi la data non conta come lavoro sul singolo articolo:{" "}
+            {bulkDays
+              .map((d) => `${new Date(d.date).toLocaleDateString("it-IT")} (${d.count} articoli)`)
+              .join(", ")}
+            . Se in uno di quei giorni hai aggiornato davvero un articolo, usa «✓ Rivisto» per registrarlo.
+          </p>
+        </details>
+      )}
     </>
   );
 }

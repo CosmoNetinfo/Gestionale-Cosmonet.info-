@@ -6,6 +6,8 @@ export interface ArticlesResult {
   demo: boolean;
   /** Messaggio da mostrare all'utente se qualcosa non va. */
   note?: string;
+  /** Giorni di modifica in blocco ignorati (data e numero di articoli). */
+  bulkDays?: { date: string; count: number }[];
 }
 
 const ENTITIES: Record<string, string> = {
@@ -125,7 +127,11 @@ export async function getArticles(): Promise<ArticlesResult> {
     for (const a of articles) {
       a.touched = (perDay.get(a.modified.slice(0, 10)) ?? 0) > BULK ? a.date : a.modified;
     }
-    return { articles, demo: false };
+    const bulkDays = Array.from(perDay.entries())
+      .filter(([, count]) => count > BULK)
+      .map(([date, count]) => ({ date, count }))
+      .sort((a, b) => b.date.localeCompare(a.date));
+    return { articles, demo: false, bulkDays };
   } catch (e) {
     return {
       articles: demoArticles,

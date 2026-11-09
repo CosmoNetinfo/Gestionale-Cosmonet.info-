@@ -10,3 +10,16 @@ create table if not exists public.article_reviews (
 -- Sicurezza: RLS attiva e nessuna policy = nessun accesso dalla chiave pubblica.
 -- Il gestionale usa la chiave segreta lato server, che passa comunque.
 alter table public.article_reviews enable row level security;
+
+-- Storico di Search Console: una riga per giorno e per pagina.
+-- Il cron giornaliero (/api/cron/gsc-snapshot) la riempie, così i dati restano oltre i 16 mesi di Google.
+create table if not exists public.gsc_page_daily (
+  date        date    not null,
+  page        text    not null,
+  clicks      integer not null default 0,
+  impressions integer not null default 0,
+  position    real    not null default 0,
+  primary key (date, page)
+);
+create index if not exists gsc_page_daily_page_idx on public.gsc_page_daily (page, date);
+alter table public.gsc_page_daily enable row level security;
