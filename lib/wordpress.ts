@@ -71,24 +71,13 @@ export async function getArticles(): Promise<ArticlesResult> {
     }
 
     const articles: Article[] = [];
-    let totalPages = 1;
-    for (let page = 1; page <= totalPages && page <= 60; page++) {
-      const res = await fetch(
+    const fetchPage = (page: number) =>
+      fetch(
         `${base}/wp-json/wp/v2/posts?status=publish,future,draft,pending,trash` +
-          `&per_page=30&page=${page}&_fields=id,title,slug,link,status,date,modified,categories`,
+          `&per_page=100&page=${page}&_fields=id,title,slug,link,status,date,modified,categories`,
         { headers, next: { revalidate: 300 } },
       );
-      if (!res.ok) {
-        if (page === 1) {
-          return {
-            articles: demoArticles,
-            demo: true,
-            note: `WordPress ha risposto con errore ${res.status}. Controlla utente e Application Password.`,
-          };
-        }
-        break;
-      }
-      totalPages = Number(res.headers.get("x-wp-totalpages")) || 1;
+    const collect = async (res: Response) => {
       for (const p of (await res.json()) as WpPost[]) {
         articles.push({
           id: p.id,
@@ -100,6 +89,29 @@ export async function getArticles(): Promise<ArticlesResult> {
           date: p.date,
           modified: p.modified,
         });
+      }
+    };
+
+    // Prima pagina: serve per sapere quante pagine ci sono in tutto
+    const first = await fetchPage(1);
+    if (!first.ok) {
+      return {
+        articles: demoArticles,
+        demo: true,
+        note: `WordPress ha risposto con errore ${first.status}. Controlla utente e Application Password.`,
+      };
+    }
+    const totalPages = Math.min(Number(first.headers.get("x-wp-totalpages")) || 1, 60);
+    await collect(first);
+
+    // Le altre pagine in parallelo, a gruppi di 6 per non sovraccaricare il sito
+    for (let start = 2; start <= totalPages; start += 6) {
+      const batch = Array.from(
+        { length: Math.min(6, totalPages - start + 1) },
+        (_, i) => fetchPage(start + i),
+      );
+      for (const res of await Promise.all(batch)) {
+        if (res.ok) await collect(res);
       }
     }
     return { articles, demo: false };

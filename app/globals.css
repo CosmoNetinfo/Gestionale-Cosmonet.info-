@@ -14,3 +14,8 @@ body {
 body {
   min-width: 1280px;
 }
+
+@keyframes cc-progress {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(350%); }
+}
