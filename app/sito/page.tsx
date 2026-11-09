@@ -1,3 +1,4 @@
+import type React from "react";
 import Link from "next/link";
 import { getArticles } from "@/lib/wordpress";
 import { getGscStats, normUrl } from "@/lib/gsc";
@@ -26,7 +27,7 @@ const statoTone: Record<Stato, "ok" | "info" | "neutral" | "warn" | "danger"> = 
 export default async function Sito({
   searchParams,
 }: {
-  searchParams: { stato?: string; q?: string };
+  searchParams: { stato?: string; q?: string; sort?: string; dir?: string };
 }) {
   const [{ articles, demo, note }, gsc] = await Promise.all([getArticles(), getGscStats()]);
   const filtro = searchParams.stato ?? "publish";
@@ -49,8 +50,44 @@ export default async function Sito({
         a.category.toLowerCase().includes(q),
     );
   }
-  rows = [...rows].sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+  const stats = (a: (typeof articles)[number]) =>
+    gsc.configured ? gsc.byUrl.get(normUrl(a.url)) : undefined;
+  // Potenziale: impressioni che non sono diventate click. Più alto = più vale la pena rivedere.
+  // Se l'articolo è in posizione 5-20 (vicino alla prima pagina) conta di più.
+  const potenziale = (a: (typeof articles)[number]) => {
+    const g = stats(a);
+    if (!g) return 0;
+    const boost = g.position >= 5 && g.position <= 20 ? 1.5 : 1;
+    return Math.round(g.impressions * (1 - g.ctr) * boost);
+  };
+  const sort = searchParams.sort ?? (filtro === "rivedere" ? "prio" : "date");
+  const dir = searchParams.dir === "asc" ? "asc" : "desc";
+  const keyOf: Record<string, (a: (typeof articles)[number]) => number> = {
+    date: (a) => new Date(a.date).getTime(),
+    days: (a) => new Date(a.date).getTime(),
+    id: (a) => a.id,
+    click: (a) => stats(a)?.clicks ?? -1,
+    impr: (a) => stats(a)?.impressions ?? -1,
+    ctr: (a) => stats(a)?.ctr ?? -1,
+    pos: (a) => stats(a)?.position ?? 9999,
+    prio: potenziale,
+  };
+  const key = keyOf[sort] ?? keyOf.date;
+  // "Giorni" è l'inverso della data
+  const mult = (dir === "desc" ? 1 : -1) * (sort === "days" ? -1 : 1);
+  rows = [...rows].sort((a, b) => (key(b) - key(a)) * mult);
+
+  const sortHref = (k: string) => {
+    const nextDir = sort === k && dir === "desc" ? "asc" : "desc";
+    return `/sito?stato=${filtro}${q ? `&q=${encodeURIComponent(q)}` : ""}&sort=${k}&dir=${nextDir}`;
+  };
+  const Th = ({ k, children, right }: { k: string; children: React.ReactNode; right?: boolean }) => (
+    <th className={"px-4 py-3 font-medium " + (right ? "text-right" : "")}>
+      <Link href={sortHref(k)} className="hover:text-ink">
+        {children}
+        {sort === k ? (dir === "desc" ? " ↓" : " ↑") : ""}
+      </Link>
+    </th>
   );
 
   return (
@@ -86,6 +123,8 @@ export default async function Sito({
 
         <form action="/sito" className="flex gap-2">
           <input type="hidden" name="stato" value={filtro} />
+          <input type="hidden" name="sort" value={sort} />
+          <input type="hidden" name="dir" value={dir} />
           <input
             name="q"
             defaultValue={q}
@@ -99,23 +138,24 @@ export default async function Sito({
         <table className="w-full text-left text-sm">
           <thead className="border-b border-line bg-canvas text-xs uppercase tracking-wide text-muted">
             <tr>
-              <th className="px-4 py-3 font-medium">ID</th>
+              <Th k="id">ID</Th>
               <th className="px-4 py-3 font-medium">Titolo</th>
               <th className="px-4 py-3 font-medium">Categoria</th>
-              <th className="px-4 py-3 font-medium">Data</th>
-              <th className="px-4 py-3 font-medium">Giorni</th>
+              <Th k="date">Data</Th>
+              <Th k="days">Giorni</Th>
               <th className="px-4 py-3 font-medium">Stato</th>
               <th className="px-4 py-3 font-medium">Revisione</th>
-              <th className="px-4 py-3 text-right font-medium" title={`Ultimi ${gsc.days} giorni`}>Click</th>
-              <th className="px-4 py-3 text-right font-medium" title={`Ultimi ${gsc.days} giorni`}>Impr.</th>
-              <th className="px-4 py-3 text-right font-medium">CTR</th>
-              <th className="px-4 py-3 text-right font-medium">Pos.</th>
+              <Th k="click" right>Click</Th>
+              <Th k="impr" right>Impr.</Th>
+              <Th k="ctr" right>CTR</Th>
+              <Th k="pos" right>Pos.</Th>
+              <Th k="prio" right>Potenziale</Th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
             {rows.length === 0 && (
               <tr>
-                <td colSpan={11} className="px-4 py-10 text-center text-muted">
+                <td colSpan={12} className="px-4 py-10 text-center text-muted">
                   Nessun articolo con questo filtro.
                 </td>
               </tr>
@@ -164,6 +204,9 @@ export default async function Sito({
                       <td className="px-4 py-3 text-right text-muted">
                         {g ? g.position.toFixed(1).replace(".", ",") : dash}
                       </td>
+                      <td className="px-4 py-3 text-right font-medium">
+                        {potenziale(a) > 0 ? potenziale(a) : <span className="font-normal text-muted">—</span>}
+                      </td>
                     </>
                   );
                 })()}
@@ -177,6 +220,7 @@ export default async function Sito({
         “Da rivedere”: articolo pubblicato non toccato da più di {reviewDays()} giorni
         (si conta dalla data più recente tra pubblicazione e ultima modifica).
         Click, impressioni, CTR e posizione: ultimi {gsc.days} giorni da Search Console (dati con 2-3 giorni di ritardo).
+        Potenziale: impressioni non diventate click, ×1,5 se l&apos;articolo è in posizione 5-20. Più è alto, più conviene rivederlo. Clicca sulle intestazioni per ordinare.
       </p>
     </>
   );
