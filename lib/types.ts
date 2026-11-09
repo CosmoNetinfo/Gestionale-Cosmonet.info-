@@ -11,6 +11,10 @@ export interface Article {
   date: string;
   /** Data ultima modifica (ISO, ora del sito) */
   modified: string;
+  /** Ultima modifica "vera": ignora le modifiche in blocco (stessa data su molti articoli). */
+  touched?: string;
+  /** Data in cui l'hai segnato come rivisto dal gestionale (Supabase). */
+  reviewedAt?: string;
 }
 
 export const STATO_LABEL: Record<Stato, string> = {

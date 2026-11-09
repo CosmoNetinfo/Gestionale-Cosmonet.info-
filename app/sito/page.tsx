@@ -1,6 +1,8 @@
 import type React from "react";
 import Link from "next/link";
-import { getArticles } from "@/lib/wordpress";
+import { loadArticles } from "@/lib/articles";
+import { supabaseConfigured } from "@/lib/supabase";
+import { segnaRivisto } from "./actions";
 import { getGscStats, normUrl } from "@/lib/gsc";
 import { daysSince, daysSinceTouched, isToReview, reviewDays } from "@/lib/review";
 import { STATO_LABEL, type Stato } from "@/lib/types";
@@ -29,7 +31,7 @@ export default async function Sito({
 }: {
   searchParams: { stato?: string; q?: string; sort?: string; dir?: string };
 }) {
-  const [{ articles, demo, note }, gsc] = await Promise.all([getArticles(), getGscStats()]);
+  const [{ articles, demo, note }, gsc] = await Promise.all([loadArticles(), getGscStats()]);
   const filtro = searchParams.stato ?? "publish";
   const q = (searchParams.q ?? "").trim().toLowerCase();
 
@@ -184,11 +186,27 @@ export default async function Sito({
                   <Badge tone={statoTone[a.status]}>{STATO_LABEL[a.status]}</Badge>
                 </td>
                 <td className="px-4 py-3">
-                  {isToReview(a) ? (
-                    <Badge tone="warn">Da rivedere · {daysSinceTouched(a)} g</Badge>
-                  ) : (
-                    <span className="text-muted">—</span>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {isToReview(a) ? (
+                      <Badge tone="warn">Da rivedere · {daysSinceTouched(a)} g</Badge>
+                    ) : a.reviewedAt ? (
+                      <Badge tone="ok">Rivisto il {new Date(a.reviewedAt).toLocaleDateString("it-IT")}</Badge>
+                    ) : (
+                      <span className="text-muted">—</span>
+                    )}
+                    {isToReview(a) && supabaseConfigured() && (
+                      <form action={segnaRivisto}>
+                        <input type="hidden" name="id" value={a.id} />
+                        <button
+                          type="submit"
+                          title="Segna come rivisto oggi"
+                          className="rounded-md border border-line px-2 py-0.5 text-xs text-muted hover:border-primary hover:text-primary"
+                        >
+                          ✓ Rivisto
+                        </button>
+                      </form>
+                    )}
+                  </div>
                 </td>
                 {(() => {
                   const g = gsc.configured ? gsc.byUrl.get(normUrl(a.url)) : undefined;
@@ -218,7 +236,7 @@ export default async function Sito({
 
       <p className="mt-4 text-xs text-muted">
         “Da rivedere”: articolo pubblicato non toccato da più di {reviewDays()} giorni
-        (si conta dalla data più recente tra pubblicazione e ultima modifica).
+        (si conta dalla data più recente tra pubblicazione, ultima modifica vera e revisione segnata qui; le modifiche in blocco su più di 20 articoli nello stesso giorno vengono ignorate).
         Click, impressioni, CTR e posizione: ultimi {gsc.days} giorni da Search Console (dati con 2-3 giorni di ritardo).
         Potenziale: impressioni non diventate click, ×1,5 se l&apos;articolo è in posizione 5-20. Più è alto, più conviene rivederlo. Clicca sulle intestazioni per ordinare.
       </p>

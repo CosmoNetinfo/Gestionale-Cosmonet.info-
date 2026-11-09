@@ -12,18 +12,18 @@ export function daysSince(iso: string, now: Date = new Date()): number {
   return Math.max(0, Math.floor((now.getTime() - t) / 86_400_000));
 }
 
-/** Giorni dall'ultima volta che l'articolo è stato toccato (pubblicazione o modifica). */
+/**
+ * Giorni dall'ultimo intervento vero sull'articolo: la data più recente tra pubblicazione,
+ * ultima modifica "vera" (senza modifiche in blocco) e revisione segnata nel gestionale.
+ */
 export function daysSinceTouched(a: Article): number {
-  const published = new Date(a.date).getTime();
-  const modified = new Date(a.modified).getTime();
-  const last = Math.max(
-    Number.isNaN(published) ? 0 : published,
-    Number.isNaN(modified) ? 0 : modified,
-  );
-  return daysSince(new Date(last).toISOString());
+  const ts = [a.date, a.touched ?? a.modified, a.reviewedAt]
+    .map((d) => (d ? new Date(d).getTime() : 0))
+    .filter((t) => !Number.isNaN(t));
+  return daysSince(new Date(Math.max(0, ...ts)).toISOString());
 }
 
-/** Regola della fase 1: articolo pubblicato non toccato da più di `reviewDays()` giorni. */
+/** Regola: articolo pubblicato non toccato da più di `reviewDays()` giorni. */
 export function isToReview(a: Article): boolean {
   return a.status === "publish" && daysSinceTouched(a) > reviewDays();
 }

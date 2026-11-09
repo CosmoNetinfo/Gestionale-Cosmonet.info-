@@ -114,6 +114,17 @@ export async function getArticles(): Promise<ArticlesResult> {
         if (res.ok) await collect(res);
       }
     }
+    // Modifiche in blocco: se più di BULK articoli hanno la stessa data di modifica (giorno),
+    // quella data non dice nulla sul lavoro fatto sul singolo articolo.
+    const BULK = 20;
+    const perDay = new Map<string, number>();
+    for (const a of articles) {
+      const d = a.modified.slice(0, 10);
+      perDay.set(d, (perDay.get(d) ?? 0) + 1);
+    }
+    for (const a of articles) {
+      a.touched = (perDay.get(a.modified.slice(0, 10)) ?? 0) > BULK ? a.date : a.modified;
+    }
     return { articles, demo: false };
   } catch (e) {
     return {

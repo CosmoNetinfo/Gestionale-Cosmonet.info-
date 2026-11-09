@@ -1,4 +1,4 @@
-import { getArticles } from "@/lib/wordpress";
+import { loadArticles } from "@/lib/articles";
 import { getRepos } from "@/lib/github";
 import { daysSinceTouched, isToReview, reviewDays } from "@/lib/review";
 import { Badge, Card, DemoBanner, Kpi, PageHeader } from "@/components/ui";
@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export default async function Panoramica() {
   const [{ articles, demo, note }, repos] = await Promise.all([
-    getArticles(),
+    loadArticles(),
     getRepos(),
   ]);
 
