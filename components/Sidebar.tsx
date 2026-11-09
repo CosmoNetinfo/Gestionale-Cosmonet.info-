@@ -25,9 +25,23 @@ export default function Sidebar() {
       style={{ width: "var(--sidebar-width)" }}
     >
       <div className="flex items-center gap-3 px-6 py-6">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-lg font-bold text-white">
-          C
-        </div>
+        <svg viewBox="0 0 512 512" className="h-9 w-9 shrink-0" role="img" aria-label="Cosmo Control">
+          <defs>
+            <linearGradient id="logo-g" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stopColor="#2b86d1" />
+              <stop offset="1" stopColor="#174f80" />
+            </linearGradient>
+          </defs>
+          <rect width="512" height="512" rx="116" fill="url(#logo-g)" />
+          <path
+            d="M 348 179 A 120 120 0 1 0 348 333"
+            fill="none"
+            stroke="#fff"
+            strokeWidth="64"
+            strokeLinecap="round"
+          />
+          <circle cx="392" cy="256" r="26" fill="#fff" />
+        </svg>
         <div className="leading-tight">
           <div className="text-[15px] font-semibold text-ink">Cosmo Control</div>
           <div className="text-xs text-muted">cosmonet.info</div>
