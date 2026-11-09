@@ -200,7 +200,7 @@ export default async function Sito({
                         <button
                           type="submit"
                           title="Segna come rivisto oggi"
-                          className="rounded-md border border-line px-2 py-0.5 text-xs text-muted hover:border-primary hover:text-primary"
+                          className="whitespace-nowrap rounded-md border border-line px-2 py-0.5 text-xs text-muted hover:border-primary hover:text-primary"
                         >
                           ✓ Rivisto
                         </button>
