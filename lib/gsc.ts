@@ -158,3 +158,65 @@ export async function getGscStats(): Promise<GscResult> {
     };
   }
 }
+
+/**
+ * Potenziale di un articolo: impressioni che non sono diventate click,
+ * ×1,5 se è in posizione 5-20 (vicino alla prima pagina). Più alto = più conviene rivederlo.
+ * Attenzione: le ricerche "navigazionali" (il solo nome di un servizio) gonfiano il numero.
+ */
+export function opportunity(g?: GscStats): number {
+  if (!g) return 0;
+  const boost = g.position >= 5 && g.position <= 20 ? 1.5 : 1;
+  return Math.round(g.impressions * (1 - g.ctr) * boost);
+}
+
+export interface PageQuery extends GscStats {
+  query: string;
+}
+
+/** Le ricerche che portano a un articolo (ultimi GSC_DAYS giorni), ordinate per impressioni. */
+export async function getPageQueries(pageUrl: string, limit = 25): Promise<{ queries: PageQuery[]; note?: string }> {
+  const raw = process.env.GSC_SERVICE_ACCOUNT_JSON;
+  const site = process.env.GSC_SITE;
+  if (!raw || !site) return { queries: [], note: "Search Console non collegato" };
+  try {
+    const creds = JSON.parse(raw) as { client_email: string; private_key: string };
+    const token = await getAccessToken(creds.client_email, creds.private_key);
+    const end = new Date(Date.now() - 2 * 86400000);
+    const start = new Date(end.getTime() - GSC_DAYS * 86400000);
+    const path = new URL(pageUrl).pathname;
+    const res = await fetch(
+      `https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(site)}/searchAnalytics/query`,
+      {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          startDate: iso(start),
+          endDate: iso(end),
+          dimensions: ["query"],
+          dimensionFilterGroups: [
+            { filters: [{ dimension: "page", operator: "contains", expression: path }] },
+          ],
+          rowLimit: limit,
+        }),
+        cache: "no-store",
+      },
+    );
+    if (!res.ok) return { queries: [], note: `Search Console errore ${res.status}` };
+    const rows =
+      ((await res.json()) as {
+        rows?: { keys: string[]; clicks: number; impressions: number; ctr: number; position: number }[];
+      }).rows ?? [];
+    return {
+      queries: rows.map((r) => ({
+        query: r.keys[0],
+        clicks: r.clicks,
+        impressions: r.impressions,
+        ctr: r.ctr,
+        position: r.position,
+      })),
+    };
+  } catch (e) {
+    return { queries: [], note: (e as Error).message };
+  }
+}

@@ -134,3 +134,43 @@ export async function getArticles(): Promise<ArticlesResult> {
     };
   }
 }
+
+/** Testo (senza HTML) di un singolo articolo, per la ricerca approfondita. */
+export async function getArticleContent(
+  id: number,
+): Promise<{ title: string; url: string; status: string; text: string } | null> {
+  const base = process.env.WP_BASE_URL?.replace(/\/$/, "");
+  const user = process.env.WP_USER;
+  const pass = process.env.WP_APP_PASSWORD;
+  if (!base || !user || !pass) return null;
+  const res = await fetch(
+    `${base}/wp-json/wp/v2/posts/${id}?context=edit&_fields=id,title,link,status,content`,
+    {
+      headers: { Authorization: "Basic " + Buffer.from(`${user}:${pass}`).toString("base64") },
+      cache: "no-store",
+    },
+  );
+  if (!res.ok) return null;
+  const p = (await res.json()) as {
+    title?: { raw?: string; rendered?: string };
+    link: string;
+    status: string;
+    content?: { raw?: string; rendered?: string };
+  };
+  const html = p.content?.rendered ?? p.content?.raw ?? "";
+  const text = decodeEntities(
+    html
+      .replace(/<(script|style)[\s\S]*?<\/\1>/gi, "")
+      .replace(/<\/(p|h[1-6]|li|tr|div)>/gi, "\n")
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<[^>]+>/g, "")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim(),
+  );
+  return {
+    title: decodeEntities(p.title?.raw ?? p.title?.rendered ?? ""),
+    url: p.link,
+    status: p.status,
+    text,
+  };
+}

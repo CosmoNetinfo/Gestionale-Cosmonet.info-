@@ -6,6 +6,9 @@ import { NextResponse, type NextRequest } from "next/server";
  * In sviluppo, senza APP_PASSWORD è aperta.
  */
 export function middleware(req: NextRequest) {
+  // Il server MCP si protegge da solo con MCP_TOKEN (nell'indirizzo): Claude non può inserire la password.
+  if (req.nextUrl.pathname.startsWith("/api/mcp/")) return NextResponse.next();
+
   const password = process.env.APP_PASSWORD;
 
   if (!password) {

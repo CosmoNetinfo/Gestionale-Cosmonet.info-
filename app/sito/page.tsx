@@ -3,7 +3,7 @@ import Link from "next/link";
 import { loadArticles } from "@/lib/articles";
 import { supabaseConfigured } from "@/lib/supabase";
 import { segnaRivisto } from "./actions";
-import { getGscStats, normUrl } from "@/lib/gsc";
+import { getGscStats, normUrl, opportunity } from "@/lib/gsc";
 import { daysSince, daysSinceTouched, isToReview, reviewDays } from "@/lib/review";
 import { STATO_LABEL, type Stato } from "@/lib/types";
 import { Badge, Card, DemoBanner, PageHeader } from "@/components/ui";
@@ -54,14 +54,7 @@ export default async function Sito({
   }
   const stats = (a: (typeof articles)[number]) =>
     gsc.configured ? gsc.byUrl.get(normUrl(a.url)) : undefined;
-  // Potenziale: impressioni che non sono diventate click. Più alto = più vale la pena rivedere.
-  // Se l'articolo è in posizione 5-20 (vicino alla prima pagina) conta di più.
-  const potenziale = (a: (typeof articles)[number]) => {
-    const g = stats(a);
-    if (!g) return 0;
-    const boost = g.position >= 5 && g.position <= 20 ? 1.5 : 1;
-    return Math.round(g.impressions * (1 - g.ctr) * boost);
-  };
+  const potenziale = (a: (typeof articles)[number]) => opportunity(stats(a));
   const sort = searchParams.sort ?? (filtro === "rivedere" ? "prio" : "date");
   const dir = searchParams.dir === "asc" ? "asc" : "desc";
   const keyOf: Record<string, (a: (typeof articles)[number]) => number> = {
