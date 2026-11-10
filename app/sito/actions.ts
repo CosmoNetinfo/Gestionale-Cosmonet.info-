@@ -9,8 +9,9 @@ export async function segnaRivisto(formData: FormData) {
   if (!Number.isInteger(id) || id <= 0) return;
   try {
     await markReviewed(id);
-  } catch {
-    redirect(`/sito/${id}?errore=salvataggio`);
+  } catch (e) {
+    const m = e instanceof Error ? e.message : "errore";
+    redirect(`/sito/${id}?errore=${encodeURIComponent(m)}`);
   }
   revalidatePath("/sito");
   revalidatePath(`/sito/${id}`);

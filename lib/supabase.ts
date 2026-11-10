@@ -45,5 +45,8 @@ export async function markReviewed(articleId: number): Promise<void> {
     body: JSON.stringify({ article_id: articleId, reviewed_at: new Date().toISOString() }),
     cache: "no-store",
   });
-  if (!res.ok) throw new Error(`Supabase ha risposto con errore ${res.status}`);
+  if (!res.ok) {
+    const body = (await res.text().catch(() => "")).slice(0, 200);
+    throw new Error(`Supabase ${res.status}: ${body}`);
+  }
 }

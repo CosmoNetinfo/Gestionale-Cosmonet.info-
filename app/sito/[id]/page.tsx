@@ -78,10 +78,10 @@ export default async function Scheda({
         }
       />
 
-      {searchParams?.errore === "salvataggio" && (
+      {searchParams?.errore && (
         <DemoBanner
           title="Revisione non salvata."
-          reason="Supabase ha rifiutato la scrittura (errore 403). Controlla che SUPABASE_SECRET_KEY su Vercel sia la chiave segreta (sb_secret_… o service_role), non quella pubblica."
+          reason={`Dettaglio: ${searchParams.errore}`}
         />
       )}
 
