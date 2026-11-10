@@ -34,7 +34,7 @@ export default function Sidebar() {
       className="sticky top-0 flex h-screen shrink-0 flex-col border-r border-line bg-surface"
       style={{ width: "var(--sidebar-width)" }}
     >
-      <div className="flex items-center gap-3 px-6 py-6">
+      <div className="flex items-center gap-3 px-6 py-4">
         <svg viewBox="0 0 512 512" className="h-9 w-9 shrink-0" role="img" aria-label="Cosmo Control">
           <defs>
             <linearGradient id="logo-g" x1="0" y1="0" x2="1" y2="1">
@@ -67,7 +67,7 @@ export default function Sidebar() {
         <span className="text-xs">⌘K</span>
       </button>
 
-      <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3">
+      <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 pb-2">
         {pages.map((p) => {
           const active =
             p.href === "/" ? pathname === "/" : pathname.startsWith(p.href);
@@ -76,7 +76,7 @@ export default function Sidebar() {
               key={p.href}
               href={p.href}
               className={
-                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors " +
+                "flex items-center gap-3 rounded-lg px-3 py-1.5 text-[13px] font-medium transition-colors " +
                 (active
                   ? "bg-primary-soft text-primary-dark"
                   : "text-muted hover:bg-canvas hover:text-ink")
@@ -89,7 +89,7 @@ export default function Sidebar() {
         })}
       </nav>
 
-      <div className="border-t border-line px-6 py-4 text-xs text-muted">
+      <div className="border-t border-line px-6 py-3 text-xs text-muted">
         Uso personale
       </div>
     </aside>

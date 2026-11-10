@@ -23,10 +23,11 @@ export default async function Ricerche({ searchParams }: { searchParams: { q?: s
   const curStart = new Date(end.getTime() - 27 * D);
   const prevEnd = new Date(curStart.getTime() - D);
   const prevStart = new Date(prevEnd.getTime() - 27 * D);
-  const [cur, prev, pq, { articles }] = await Promise.all([
+  const [cur, prev, pq, pqPrev, { articles }] = await Promise.all([
     gscRows({ startDate: isoDate(curStart), endDate: isoDate(end), dimensions: ["query"] }, { maxPages: 2, revalidate: 3600 }),
     gscRows({ startDate: isoDate(prevStart), endDate: isoDate(prevEnd), dimensions: ["query"] }, { maxPages: 2, revalidate: 3600 }),
     gscRows({ startDate: isoDate(curStart), endDate: isoDate(end), dimensions: ["query", "page"] }, { maxPages: 2, revalidate: 3600 }),
+    gscRows({ startDate: isoDate(prevStart), endDate: isoDate(prevEnd), dimensions: ["query", "page"] }, { maxPages: 2, revalidate: 3600 }),
     loadArticles(),
   ]);
   if (cur.rows.length === 0) {
@@ -45,9 +46,14 @@ export default async function Ricerche({ searchParams }: { searchParams: { q?: s
   // pagina migliore per ogni ricerca (più impressioni)
   const meta = new Map(articles.map((a) => [normUrl(a.url), { id: a.id, title: a.title }]));
   const best = new Map<string, { page: string; impressions: number }>();
-  for (const r of pq.rows) {
-    const e = best.get(r.keys[0]);
-    if (!e || r.impressions > e.impressions) best.set(r.keys[0], { page: normUrl(r.keys[1]), impressions: r.impressions });
+  for (const rows of [pqPrev.rows, pq.rows]) {
+    // prima il periodo precedente, poi quello attuale che ha la precedenza
+    const seen = new Map<string, { page: string; impressions: number }>();
+    for (const r of rows) {
+      const e = seen.get(r.keys[0]);
+      if (!e || r.impressions > e.impressions) seen.set(r.keys[0], { page: normUrl(r.keys[1]), impressions: r.impressions });
+    }
+    seen.forEach((v, k) => best.set(k, v));
   }
   const art = (q: string) => {
     const b = best.get(q);
