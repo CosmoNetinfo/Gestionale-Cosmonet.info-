@@ -503,8 +503,8 @@ export async function inspectUrl(url: string, auth?: { token: string; site: stri
 export async function inspectMany(urls: string[]): Promise<Map<string, IndexStatus>> {
   const out = new Map<string, IndexStatus>();
   const a = await gscAuth();
-  for (let i = 0; i < urls.length; i += 5) {
-    const group = urls.slice(i, i + 5);
+  for (let i = 0; i < urls.length; i += 9) {
+    const group = urls.slice(i, i + 9);
     const res = await Promise.all(group.map((u) => inspectUrl(u, "error" in a ? undefined : a)));
     group.forEach((u, j) => out.set(u, res[j]));
   }

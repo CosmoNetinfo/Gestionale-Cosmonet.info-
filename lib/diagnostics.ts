@@ -503,6 +503,7 @@ const ROUTES = [
   "/report",
   "/ricerche",
   "/link",
+  "/segmenti",
   "/impatto",
   "/salute",
   "/stato",
@@ -531,7 +532,7 @@ async function pageChecks(origin: string | null): Promise<Check[]> {
   const one = (path: string) =>
     run(G, path, async () => {
       const t0 = Date.now();
-      const res = await fetch(origin + path, { headers, cache: "no-store", signal: sig(30000), redirect: "manual" });
+      const res = await fetch(origin + path, { headers, cache: "no-store", signal: sig(40000), redirect: "manual" });
       const ms = Date.now() - t0;
       if (res.status >= 500)
         return { esito: "fail", dettaglio: `errore del server (${res.status}) dopo ${ms} ms`, fix: "Questa pagina si rompe sul server: Vercel → Logs, filtra per questo percorso (oppure chiedi a Claude, che li legge)." };
