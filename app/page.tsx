@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { loadArticles } from "@/lib/articles";
 import { getRepos } from "@/lib/github";
 import { getGscDaily, getGscStats, normUrl, opportunity } from "@/lib/gsc";
@@ -31,6 +32,13 @@ export default async function Panoramica() {
       <PageHeader
         title="Panoramica"
         subtitle="Il quadro generale di Cosmonet.info"
+        right={
+          toReview.length > 0 ? (
+            <Link href="/prossimo" className="rounded-lg border border-line px-3 py-2 text-sm font-medium text-muted hover:border-primary hover:text-primary">
+              Prossimo da rivedere →
+            </Link>
+          ) : undefined
+        }
       />
 
       {demo && note && <DemoBanner reason={note} />}

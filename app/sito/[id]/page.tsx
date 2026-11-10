@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import { loadArticles } from "@/lib/articles";
 import { supabaseConfigured } from "@/lib/supabase";
 import { getHistoryOrNone } from "./data";
-import { segnaRivisto } from "../actions";
+import { salvaNota, segnaRivisto } from "../actions";
+import { getNote } from "@/lib/notes";
 import { getGscStats, getPageDaily, getPageQueries, consoleLink, inspectUrl, normUrl, opportunity } from "@/lib/gsc";
 import { daysSince, daysSinceTouched, isToReview } from "@/lib/review";
 import { STATO_LABEL } from "@/lib/types";
@@ -31,12 +32,13 @@ export default async function Scheda({
   const a = articles.find((x) => x.id === id);
   if (!a) notFound();
 
-  const [gsc, queries, daily, history, index] = await Promise.all([
+  const [gsc, queries, daily, history, index, nota] = await Promise.all([
     getGscStats(),
     getPageQueries(a.url, 30),
     getPageDaily(a.url),
     getHistoryOrNone(a.url),
     a.status === "publish" ? inspectUrl(a.url) : Promise.resolve(null),
+    getNote(a.id),
   ]);
   const g = gsc.configured ? gsc.byUrl.get(normUrl(a.url)) : undefined;
 
@@ -81,7 +83,7 @@ export default async function Scheda({
 
       {searchParams?.errore && (
         <DemoBanner
-          title="Revisione non salvata."
+          title={searchParams.errore.startsWith("Nota") ? "Nota non salvata." : "Revisione non salvata."}
           reason={`Dettaglio: ${searchParams.errore}`}
         />
       )}
@@ -178,6 +180,30 @@ export default async function Scheda({
           </p>
         </Card>
       </div>
+
+      <Card className="mt-5">
+        <h2 className="mb-1 text-base font-semibold">Note su questo articolo</h2>
+        {nota.missing ? (
+          <p className="text-sm text-muted">Le note non sono ancora attive ({nota.missing}). Vedi le istruzioni che ti ha dato Claude.</p>
+        ) : (
+          <form action={salvaNota}>
+            <input type="hidden" name="id" value={a.id} />
+            <textarea
+              name="nota"
+              defaultValue={nota.note?.note ?? ""}
+              rows={4}
+              placeholder="Cosa ricontrollare, cosa hai già fatto, idee per la prossima revisione…"
+              className="w-full rounded-md border border-line bg-canvas px-3 py-2 text-sm"
+            />
+            <div className="mt-2 flex items-center justify-between gap-3">
+              <span className="text-xs text-muted">
+                {nota.note ? `Ultimo salvataggio: ${new Date(nota.note.updated_at).toLocaleString("it-IT")}` : "Nessuna nota salvata."}
+              </span>
+              <button className="rounded-md border border-line px-3 py-1.5 text-sm hover:border-primary hover:text-primary">Salva nota</button>
+            </div>
+          </form>
+        )}
+      </Card>
 
       <Card className="mt-5 overflow-hidden p-0">
         <div className="border-b border-line px-5 py-4">

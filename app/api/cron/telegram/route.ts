@@ -2,7 +2,7 @@ import { timingSafeEqual } from "crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { loadArticles } from "@/lib/articles";
 import { runDiagnostics } from "@/lib/diagnostics";
-import { getComparison, getGscDaily, normUrl } from "@/lib/gsc";
+import { getComparison, getGscDaily, gscEndDate, gscRows, isoDate, normUrl } from "@/lib/gsc";
 import { daysSince, isToReview } from "@/lib/review";
 import { esc, sendTelegram, telegramConfigured } from "@/lib/telegram";
 
@@ -59,9 +59,47 @@ async function weekly(): Promise<string> {
 }
 
 /**
+ * Cali improvvisi: confronta gli ultimi 7 giorni con i 7 prima, oggi e ieri.
+ * Segnala solo gli articoli che oggi superano la soglia e ieri no, così l'avviso non si ripete ogni giorno.
+ */
+async function anomalie(): Promise<string | null> {
+  const D = 86400000;
+  const end = gscEndDate();
+  const win = async (shift: number) => {
+    const e = new Date(end.getTime() - shift * D);
+    const curS = new Date(e.getTime() - 6 * D);
+    const prevE = new Date(curS.getTime() - D);
+    const prevS = new Date(prevE.getTime() - 6 * D);
+    const q = (s: Date, x: Date) => gscRows({ startDate: isoDate(s), endDate: isoDate(x), dimensions: ["page"] }, { maxPages: 2 });
+    const [c, p] = await Promise.all([q(curS, e), q(prevS, prevE)]);
+    const m = new Map<string, { cur: number; prev: number }>();
+    for (const r of c.rows) m.set(normUrl(r.keys[0]), { cur: r.clicks, prev: 0 });
+    for (const r of p.rows) {
+      const k = normUrl(r.keys[0]);
+      m.set(k, { cur: m.get(k)?.cur ?? 0, prev: r.clicks });
+    }
+    return m;
+  };
+  const [oggi, ieri, { articles }] = await Promise.all([win(0), win(1), loadArticles()]);
+  const meta = new Map(articles.map((a) => [normUrl(a.url), a]));
+  const cade = (v?: { cur: number; prev: number }) => !!v && v.prev >= 15 && v.cur <= v.prev * 0.4;
+  const nuovi = Array.from(oggi.entries())
+    .filter(([k, v]) => cade(v) && !cade(ieri.get(k)) && meta.has(k))
+    .sort((a, b) => b[1].prev - b[1].cur - (a[1].prev - a[1].cur))
+    .slice(0, 6);
+  if (!nuovi.length) return null;
+  return [
+    "🚨 <b>Calo improvviso di click</b> (ultimi 7 giorni contro i 7 prima)",
+    ...nuovi.map(([k, v]) => `• ${esc(meta.get(k)!.title)}: ${v.prev} → ${v.cur} click`),
+    "",
+    "Controlla se Google ha cambiato la posizione o se l'articolo ha un problema.",
+  ].join("\n");
+}
+
+/**
  * Chiamato ogni giorno da Vercel (vercel.json) con Authorization: Bearer CRON_SECRET.
  * Lunedì: riepilogo settimanale. Ogni giorno: avviso solo se il Debug trova problemi.
- * Prova manuale: ?force=weekly oppure ?force=debug.
+ * Avviso ogni giorno anche per i cali improvvisi di click. Prova manuale: ?force=weekly, ?force=anomalie oppure ?force=debug.
  */
 export async function GET(req: NextRequest) {
   const secret = process.env.CRON_SECRET?.trim();
@@ -77,7 +115,18 @@ export async function GET(req: NextRequest) {
     const r = await sendTelegram(await weekly());
     (r.ok ? sent : errors).push(r.ok ? "settimanale" : r.message);
   }
-  if (force !== "weekly") {
+  if (force === "anomalie" || !force) {
+    try {
+      const text = await anomalie();
+      if (text) {
+        const r = await sendTelegram(text);
+        (r.ok ? sent : errors).push(r.ok ? "anomalie" : r.message);
+      }
+    } catch (e) {
+      errors.push("anomalie: " + (e as Error).message);
+    }
+  }
+  if (force !== "weekly" && force !== "anomalie") {
     const diag = await runDiagnostics({ origin: null, full: false });
     const bad = diag.checks.filter((c) => c.esito === "fail");
     if (bad.length) {

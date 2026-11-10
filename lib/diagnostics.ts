@@ -214,6 +214,12 @@ async function supabaseChecks(): Promise<Check[]> {
         ? { esito: "ok", dettaglio: "scrittura e cancellazione di prova riuscite" }
         : { esito: "warn", dettaglio: "scrittura ok, ma non riesco a cancellare la riga di prova (id -1): innocuo", fix: "Facoltativo: GRANT delete ON public.article_reviews TO service_role;" };
     }),
+    run(G, "Note per articolo (article_notes)", async () => {
+      const res = await fetch(`${c.url}/rest/v1/article_notes?select=article_id&limit=1`, { headers: sbH(c.key), cache: "no-store", signal: sig(10000) });
+      if (res.ok) return { esito: "ok", dettaglio: "tabella pronta" };
+      const r = await sbProblem(res, "article_notes");
+      return { ...r, esito: "warn" };
+    }),
     run(G, "Storico Search Console (gsc_page_daily)", async () => {
       const res = await fetch(`${c.url}/rest/v1/gsc_page_daily?select=date&order=date.desc&limit=1`, {
         headers: sbH(c.key, { Prefer: "count=exact" }),

@@ -12,6 +12,7 @@ const pages = [
   { href: "/opportunita", label: "Opportunità", icon: "◆" },
   { href: "/report", label: "Report", icon: "☑" },
   { href: "/ricerche", label: "Ricerche", icon: "⌕" },
+  { href: "/segmenti", label: "Segmenti", icon: "◐" },
   { href: "/impatto", label: "Impatto revisioni", icon: "↗" },
   { href: "/salute", label: "Salute del sito", icon: "✚" },
   { href: "/link", label: "Link e immagini", icon: "⛓" },
@@ -57,7 +58,16 @@ export default function Sidebar() {
         </div>
       </div>
 
-      <nav className="flex flex-1 flex-col gap-1 px-3">
+      <button
+        type="button"
+        onClick={() => window.dispatchEvent(new Event("cc-open-search"))}
+        className="mx-3 mb-2 flex items-center justify-between rounded-lg border border-line px-3 py-2 text-sm text-muted hover:border-primary hover:text-primary"
+      >
+        <span>Cerca…</span>
+        <span className="text-xs">⌘K</span>
+      </button>
+
+      <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3">
         {pages.map((p) => {
           const active =
             p.href === "/" ? pathname === "/" : pathname.startsWith(p.href);
