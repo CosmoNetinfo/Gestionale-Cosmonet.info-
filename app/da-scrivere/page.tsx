@@ -2,7 +2,8 @@ import Link from "next/link";
 import { getNews, codaMarkdown } from "@/lib/news";
 import { Badge, Card, Kpi, PageHeader } from "@/components/ui";
 import { CopyButton } from "@/components/CopyButton";
-import { aggiungiInCoda, cambiaStato } from "./actions";
+import { agendaAttiva } from "@/lib/agenda";
+import { aggiungiInCoda, cambiaStato, mettiInAgenda } from "./actions";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -16,7 +17,7 @@ const ORE = [
 const quando = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString("it-IT", { timeZone: "Europe/Rome", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—";
 
-export default async function DaScrivere({ searchParams }: { searchParams: { ore?: string; cat?: string; scritti?: string } }) {
+export default async function DaScrivere({ searchParams }: { searchParams: { ore?: string; cat?: string; scritti?: string; agenda?: string } }) {
   const ore = [24, 72, 168].includes(Number(searchParams.ore)) ? Number(searchParams.ore) : 24;
   const mostraScritti = searchParams.scritti === "1";
   const { items, fonti, fontiVuote, coda, codaMancante, categorie, sorgente } = await getNews({ ore, cat: searchParams.cat || undefined });
@@ -43,6 +44,15 @@ export default async function DaScrivere({ searchParams }: { searchParams: { ore
           </Link>
         }
       />
+
+      {searchParams.agenda === "ok" && (
+        <div className="mb-5 rounded-card border border-ok/30 bg-ok-soft px-4 py-3 text-sm text-ok">Messa su Cosmo Agenda per oggi (e in coda).</div>
+      )}
+      {searchParams.agenda === "errore" && (
+        <div className="mb-5 rounded-card border border-warn/30 bg-warn-soft px-4 py-3 text-sm text-warn">
+          Cosmo Agenda non ha risposto: controlla che AGENDA_URL sia impostata su Vercel.
+        </div>
+      )}
 
       {codaMancante && (
         <div className="mb-5 rounded-card border border-warn/30 bg-warn-soft px-4 py-3 text-sm text-warn">
@@ -143,6 +153,15 @@ export default async function DaScrivere({ searchParams }: { searchParams: { ore
                     <input type="hidden" name="source" value={n.source} />
                     <input type="hidden" name="cat" value={n.cat} />
                     <button className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-primary-dark">Da scrivere</button>
+                  </form>
+                )}
+                {!n.inCoda && agendaAttiva() && (
+                  <form action={mettiInAgenda}>
+                    <input type="hidden" name="url" value={n.url} />
+                    <input type="hidden" name="title" value={n.title} />
+                    <input type="hidden" name="source" value={n.source} />
+                    <input type="hidden" name="cat" value={n.cat} />
+                    <button className="rounded-md border border-line px-3 py-1.5 text-xs text-muted hover:border-primary hover:text-primary">Metti su Cosmo Agenda</button>
                   </form>
                 )}
               </li>
