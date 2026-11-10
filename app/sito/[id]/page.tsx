@@ -16,7 +16,13 @@ const n = (v: number) => v.toLocaleString("it-IT");
 const dm = (iso: string) => iso.slice(8, 10) + "/" + iso.slice(5, 7);
 const dec = (v: number, d = 1) => v.toFixed(d).replace(".", ",");
 
-export default async function Scheda({ params }: { params: { id: string } }) {
+export default async function Scheda({
+  params,
+  searchParams,
+}: {
+  params: { id: string };
+  searchParams?: { errore?: string };
+}) {
   const id = Number(params.id);
   if (!Number.isInteger(id) || id <= 0) notFound();
 
@@ -71,6 +77,13 @@ export default async function Scheda({ params }: { params: { id: string } }) {
           </div>
         }
       />
+
+      {searchParams?.errore === "salvataggio" && (
+        <DemoBanner
+          title="Revisione non salvata."
+          reason="Supabase ha rifiutato la scrittura (errore 403). Controlla che SUPABASE_SECRET_KEY su Vercel sia la chiave segreta (sb_secret_… o service_role), non quella pubblica."
+        />
+      )}
 
       {!gsc.configured && gsc.note && <DemoBanner title="Attenzione." reason={gsc.note} />}
 
