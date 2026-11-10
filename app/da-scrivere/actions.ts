@@ -29,7 +29,7 @@ export async function mettiInAgenda(fd: FormData) {
   let esito = "ok";
   try {
     const oggi = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Rome" });
-    await agendaAddTask({ title: `Scrivere: ${title}`, date: oggi, notes: `${url}${source ? `\nFonte: ${source}` : ""}` });
+    await agendaAddTask({ title: `🤖 Scrivere: ${title}`, date: oggi, notes: `${url}${source ? `\nFonte: ${source}` : ""}` });
     await queueUpsert({ url, title, source, cat: String(fd.get("cat") ?? "") });
   } catch {
     esito = "errore";
