@@ -71,9 +71,27 @@ export function romaToUnix(local: string): number | null {
 }
 
 /** Pubblica subito, oppure programma se `quando` (unix) è indicato. Il link, se c'è, diventa l'anteprima del post. */
-export async function facebookPubblica(p: { message: string; link?: string; quando?: number }): Promise<{ ok: boolean; id?: string; errore?: string; codice?: number }> {
+export async function facebookPubblica(p: { message: string; link?: string; quando?: number; immagine?: File }): Promise<{ ok: boolean; id?: string; errore?: string; codice?: number }> {
   if (!facebookAttivo()) return { ok: false, errore: "Facebook non è configurato" };
   const page = process.env.FACEBOOK_PAGE_ID!.trim();
+  if (p.immagine) {
+    // Post con foto: Facebook non permette foto + anteprima link insieme, quindi il link va in fondo al testo.
+    const form = new FormData();
+    form.set("caption", p.link ? `${p.message}\n\n${p.link}` : p.message);
+    form.set("source", p.immagine, p.immagine.name || "immagine.jpg");
+    if (p.quando) {
+      form.set("published", "false");
+      form.set("scheduled_publish_time", String(p.quando));
+    }
+    try {
+      const r = await fetch(`${BASE()}/${page}/photos`, { method: "POST", headers: auth(), body: form, cache: "no-store", signal: AbortSignal.timeout(30000) });
+      const j = (await r.json()) as { id?: string; post_id?: string } & GraphErrore;
+      if (!r.ok || j.error) return { ok: false, errore: j.error?.message ?? `Facebook ha risposto ${r.status}`, codice: j.error?.code };
+      return { ok: true, id: j.post_id ?? j.id };
+    } catch (e) {
+      return { ok: false, errore: (e as Error).message };
+    }
+  }
   const body = new URLSearchParams({ message: p.message });
   if (p.link) body.set("link", p.link);
   if (p.quando) {

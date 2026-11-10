@@ -11,6 +11,7 @@ const messaggi: Record<string, { tono: "ok" | "warn"; testo: string }> = {
   vuoto: { tono: "warn", testo: "Il testo del post è vuoto." },
   link: { tono: "warn", testo: "Il link deve iniziare con https://" },
   data: { tono: "warn", testo: "La data deve essere tra 15 minuti e 29 giorni da adesso." },
+  immagine: { tono: "warn", testo: "L'immagine deve essere JPG, PNG, WebP o GIF e pesare al massimo 4 MB." },
 };
 
 export default async function Facebook({ searchParams }: { searchParams: { esito?: string; codice?: string; msg?: string } }) {

@@ -10,6 +10,10 @@ export async function pubblica(fd: FormData) {
   if (!message) redirect("/facebook?esito=vuoto");
   if (link && !/^https?:\/\//i.test(link)) redirect("/facebook?esito=link");
 
+  const img = fd.get("immagine");
+  const immagine = img instanceof File && img.size > 0 ? img : undefined;
+  if (immagine && (!/^image\/(jpeg|png|webp|gif)$/.test(immagine.type) || immagine.size > 4 * 1024 * 1024)) redirect("/facebook?esito=immagine");
+
   let quando: number | undefined;
   if (quandoRaw) {
     const t = romaToUnix(quandoRaw);
@@ -19,7 +23,7 @@ export async function pubblica(fd: FormData) {
     quando = t;
   }
 
-  const r = await facebookPubblica({ message, link: link || undefined, quando });
+  const r = await facebookPubblica({ message, link: link || undefined, quando, immagine });
   if (r.ok) redirect(`/facebook?esito=${quando ? "programmato" : "ok"}`);
   redirect(`/facebook?esito=errore&codice=${r.codice ?? ""}&msg=${encodeURIComponent((r.errore ?? "").slice(0, 200))}`);
 }
