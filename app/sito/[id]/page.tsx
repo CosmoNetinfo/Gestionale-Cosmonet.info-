@@ -4,11 +4,12 @@ import { loadArticles } from "@/lib/articles";
 import { supabaseConfigured } from "@/lib/supabase";
 import { getHistoryOrNone } from "./data";
 import { segnaRivisto } from "../actions";
-import { getGscStats, getPageDaily, getPageQueries, inspectLink, inspectUrl, normUrl, opportunity } from "@/lib/gsc";
+import { getGscStats, getPageDaily, getPageQueries, consoleLink, inspectUrl, normUrl, opportunity } from "@/lib/gsc";
 import { daysSince, daysSinceTouched, isToReview } from "@/lib/review";
 import { STATO_LABEL } from "@/lib/types";
 import { Badge, Card, DemoBanner, Kpi, PageHeader } from "@/components/ui";
 import { LineChart } from "@/components/LineChart";
+import { CopyButton } from "@/components/CopyButton";
 
 export const dynamic = "force-dynamic";
 
@@ -136,12 +137,13 @@ export default async function Scheda({
                 </dd>
               </div>
             )}
-            {a.status === "publish" && inspectLink(a.url) && (
+            {a.status === "publish" && consoleLink() && (
               <div className="flex items-center justify-between gap-3">
                 <dt className="text-muted">Indicizzazione</dt>
-                <dd>
-                  <a href={inspectLink(a.url)!} target="_blank" rel="noreferrer" className="text-primary hover:underline">
-                    Richiedi su Google ↗
+                <dd className="flex items-center gap-2">
+                  <CopyButton text={a.url} />
+                  <a href={consoleLink()!} target="_blank" rel="noreferrer" className="text-primary hover:underline">
+                    Search Console ↗
                   </a>
                 </dd>
               </div>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { loadArticles } from "@/lib/articles";
-import { inspectLink, inspectMany, listSitemaps } from "@/lib/gsc";
+import { consoleLink, inspectMany, listSitemaps } from "@/lib/gsc";
+import { CopyButton } from "@/components/CopyButton";
 import { inviaSitemap } from "./actions";
 import { Badge, Card, DemoBanner, Kpi, PageHeader } from "@/components/ui";
 
@@ -53,7 +54,7 @@ export default async function Indicizzazione({ searchParams }: { searchParams?: 
               <th className="px-5 py-3 font-medium">Pubblicato</th>
               <th className="px-5 py-3 font-medium">Stato per Google</th>
               <th className="px-5 py-3 font-medium">Ultima scansione</th>
-              <th className="px-5 py-3 font-medium">Indicizzazione</th>
+              <th className="px-5 py-3 font-medium">Richiedi indicizzazione</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
@@ -75,19 +76,14 @@ export default async function Indicizzazione({ searchParams }: { searchParams?: 
                   {s.lastCrawl ? new Date(s.lastCrawl).toLocaleDateString("it-IT") : "—"}
                 </td>
                 <td className="whitespace-nowrap px-5 py-2.5">
-                  {inspectLink(a.url) && (
-                    <a
-                      href={inspectLink(a.url)!}
-                      target="_blank"
-                      rel="noreferrer"
-                      className={
-                        "rounded-md border px-2 py-1 text-xs " +
-                        (s.verdict === "PASS" ? "border-line text-muted hover:text-ink" : "border-primary text-primary hover:bg-primary-soft")
-                      }
-                    >
-                      Richiedi ↗
-                    </a>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <CopyButton text={a.url} />
+                    {consoleLink() && (
+                      <a href={consoleLink()!} target="_blank" rel="noreferrer" className="rounded-md border border-line px-2 py-1 text-xs text-muted hover:border-primary hover:text-primary">
+                        Search Console ↗
+                      </a>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}

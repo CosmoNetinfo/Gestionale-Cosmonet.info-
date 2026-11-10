@@ -582,9 +582,9 @@ export async function submitSitemap(path: string): Promise<{ ok: boolean; messag
   }
 }
 
-/** Indirizzo della pagina di Search Console dove, con un clic, si chiede l'indicizzazione di un URL. */
-export function inspectLink(url: string): string | null {
+/** Indirizzo di Search Console per la proprietà: qui, nella barra in alto, si incolla l'URL da controllare e si preme "Richiedi indicizzazione". */
+export function consoleLink(): string | null {
   const site = process.env.GSC_SITE;
   if (!site) return null;
-  return `https://search.google.com/search-console/inspect?resource_id=${encodeURIComponent(site)}&id=${encodeURIComponent(url)}`;
+  return `https://search.google.com/search-console?resource_id=${encodeURIComponent(site)}`;
 }
