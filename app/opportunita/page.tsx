@@ -73,11 +73,11 @@ export default async function Opportunita() {
           <h2 className="text-base font-semibold">Ricerche da spingere</h2>
           <p className="text-xs text-muted">Ultimi 90 giorni. Migliora titolo, paragrafo iniziale e H2 dell&apos;articolo per questa ricerca.</p>
         </div>
-        <table className="w-full text-left text-sm">
+        <table className="w-full table-fixed text-left text-sm">
           <thead className="border-b border-line bg-canvas text-xs uppercase tracking-wide text-muted">
             <tr>
-              <th className="px-5 py-3 font-medium">Ricerca</th>
-              <th className="px-5 py-3 font-medium">Articolo</th>
+              <th className="w-[34%] px-5 py-3 font-medium">Ricerca</th>
+              <th className="w-[36%] px-5 py-3 font-medium">Articolo</th>
               <th className="px-5 py-3 text-right font-medium">Impr.</th>
               <th className="px-5 py-3 text-right font-medium">Click</th>
               <th className="px-5 py-3 text-right font-medium">Pos.</th>
@@ -88,8 +88,8 @@ export default async function Opportunita() {
               const a = art(r.page)!;
               return (
                 <tr key={r.query + r.page} className="hover:bg-canvas/60">
-                  <td className="max-w-xs px-5 py-2.5 font-medium">{r.query}</td>
-                  <td className="max-w-sm px-5 py-2.5">
+                  <td className="break-words px-5 py-2.5 font-medium">{r.query}</td>
+                  <td className="break-words px-5 py-2.5">
                     <Link href={`/sito/${a.id}`} className="line-clamp-1 hover:text-primary">{a.title}</Link>
                   </td>
                   <td className="px-5 py-2.5 text-right">{n(r.impressions)}</td>
