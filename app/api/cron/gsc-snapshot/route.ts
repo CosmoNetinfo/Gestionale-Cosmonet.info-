@@ -19,9 +19,12 @@ function authorized(req: NextRequest, secret: string): boolean {
  * oppure ?from=AAAA-MM-GG&to=AAAA-MM-GG. Di default: ultimi 7 giorni (Google rivede i dati recenti).
  */
 export async function GET(req: NextRequest) {
-  const secret = process.env.CRON_SECRET;
+  const secret = process.env.CRON_SECRET?.trim();
   if (!secret) return new NextResponse("Not found", { status: 404 });
-  if (!authorized(req, secret)) return new NextResponse("Unauthorized", { status: 401 });
+  if (!authorized(req, secret)) {
+    const got = (req.headers.get("authorization") ?? "").replace(/^Bearer /, "").length;
+    return new NextResponse(`Unauthorized (ricevuti ${got} caratteri, attesi ${secret.length})`, { status: 401 });
+  }
 
   const p = req.nextUrl.searchParams;
   const end = gscEndDate();
