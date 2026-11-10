@@ -47,10 +47,18 @@ interface Post {
 }
 
 async function loadPage(base: string, page: number, per: number): Promise<{ posts: Post[]; total: number; pages: number }> {
-  const res = await fetch(`${base}/wp-json/wp/v2/posts?status=publish&per_page=${per}&page=${page}&_fields=id,title,content`, {
-    cache: "no-store",
-    signal: AbortSignal.timeout(25000),
-  });
+  let res: Response | undefined;
+  // Se WordPress risponde 429 (troppe richieste) aspetta un po' e riprova, senza sforare i 60 secondi di Vercel
+  for (let attempt = 0; attempt < 3; attempt++) {
+    res = await fetch(`${base}/wp-json/wp/v2/posts?status=publish&per_page=${per}&page=${page}&_fields=id,title,content`, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(20000),
+    });
+    if (res.status !== 429) break;
+    const wait = Math.min(Number(res.headers.get("retry-after")) || 3 * (attempt + 1), 8);
+    await new Promise((r) => setTimeout(r, wait * 1000));
+  }
+  if (!res) throw new Error("nessuna risposta da WordPress");
   if (res.status === 400) return { posts: [], total: 0, pages: 0 }; // pagina oltre l'ultima
   if (!res.ok) throw new Error(`WordPress ha risposto con errore ${res.status}`);
   return {
