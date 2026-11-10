@@ -496,6 +496,7 @@ const ROUTES = [
   "/opportunita",
   "/report",
   "/ricerche",
+  "/link",
   "/impatto",
   "/salute",
   "/stato",

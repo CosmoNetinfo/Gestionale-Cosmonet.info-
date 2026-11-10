@@ -14,6 +14,7 @@ const pages = [
   { href: "/ricerche", label: "Ricerche", icon: "⌕" },
   { href: "/impatto", label: "Impatto revisioni", icon: "↗" },
   { href: "/salute", label: "Salute del sito", icon: "✚" },
+  { href: "/link", label: "Link e immagini", icon: "⛓" },
   { href: "/stato", label: "Stato servizi", icon: "●" },
   { href: "/debug", label: "Debug", icon: "✱" },
   { href: "/indicizzazione", label: "Indicizzazione", icon: "◎" },
