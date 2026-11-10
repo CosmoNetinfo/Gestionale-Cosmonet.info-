@@ -337,6 +337,17 @@ async function wordpressChecks(): Promise<Check[]> {
       const j = (await res.json()) as { name?: string };
       return { esito: "ok", dettaglio: `autenticato come ${j.name ?? "utente"}` };
     }),
+    run(G, "Modifica da qui (campi Yoast scrivibili)", async () => {
+      if (!H) return { esito: "warn", dettaglio: "salto: mancano le credenziali WordPress" };
+      const res = await fetch(`${base}/wp-json/wp/v2/posts?per_page=1&context=edit&_fields=id,meta`, { headers: H, cache: "no-store", signal: sig(10000) });
+      if (!res.ok) return { esito: "warn", dettaglio: `HTTP ${res.status}` };
+      const j = (await res.json()) as { meta?: Record<string, unknown> | unknown[] }[];
+      const m = (Array.isArray(j[0]?.meta) ? {} : j[0]?.meta ?? {}) as Record<string, unknown>;
+      const ok = ["_yoast_wpseo_title", "_yoast_wpseo_metadesc", "_yoast_wpseo_focuskw"].every((k) => k in m);
+      return ok
+        ? { esito: "ok", dettaglio: "i campi SEO di Yoast sono visibili: la pagina «Modifica SEO e stato» può leggerli e scriverli" }
+        : { esito: "warn", dettaglio: "WordPress non espone i campi Yoast alla REST API: titolo, stato e data si modificano, i campi SEO no", fix: "Dimmelo: ti preparo il piccolo snippet da aggiungere al sito per esporli." };
+    }),
     run(G, "Articoli + revisioni (pipeline completa)", async () => {
       const r = await loadArticles();
       if (r.demo) return { esito: "fail", dettaglio: "l'app sta mostrando dati dimostrativi", fix: r.note ?? "Controlla le variabili WordPress." };
