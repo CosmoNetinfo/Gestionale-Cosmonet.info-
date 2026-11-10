@@ -9,6 +9,7 @@ const pages = [
   { href: "/repository", label: "Repository", icon: "⌥" },
   { href: "/grafici", label: "Grafici", icon: "▥" },
   { href: "/avvisi", label: "Avvisi", icon: "⚑" },
+  { href: "/da-scrivere", label: "Da scrivere", icon: "✐" },
   { href: "/opportunita", label: "Opportunità", icon: "◆" },
   { href: "/report", label: "Report", icon: "☑" },
   { href: "/ricerche", label: "Ricerche", icon: "⌕" },

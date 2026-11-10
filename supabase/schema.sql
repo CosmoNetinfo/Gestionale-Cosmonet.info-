@@ -23,3 +23,15 @@ create table if not exists public.gsc_page_daily (
 );
 create index if not exists gsc_page_daily_page_idx on public.gsc_page_daily (page, date);
 alter table public.gsc_page_daily enable row level security;
+
+-- Da scrivere: coda delle notizie scelte dai feed RSS (pagina "Da scrivere").
+create table if not exists public.news_queue (
+  url        text primary key,
+  title      text not null,
+  source     text not null default '',
+  cat        text not null default '',
+  stato      text not null default 'da_scrivere', -- da_scrivere | scritto | scartato
+  note       text,
+  added_at   timestamptz not null default now()
+);
+alter table public.news_queue enable row level security;

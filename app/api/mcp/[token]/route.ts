@@ -8,6 +8,7 @@ import { markReviewed, supabaseConfigured } from "@/lib/supabase";
 import { runDiagnostics } from "@/lib/diagnostics";
 import { revisionImpact, segments, siteQueries } from "@/lib/insights";
 import { getNote, saveNote } from "@/lib/notes";
+import { getNews, getQueue, queueUpsert } from "@/lib/news";
 import { scanBatch } from "@/lib/linkcheck";
 import { STATO_LABEL } from "@/lib/types";
 import type { Article } from "@/lib/types";
@@ -139,6 +140,21 @@ const TOOLS = [
     inputSchema: { type: "object", properties: { pagina: { type: "number", description: "Numero del blocco, da 1" } } },
   },
   {
+    name: "news_fresh",
+    description: "Notizie recenti dai feed RSS del catalogo (42 fonti), senza doppioni, con l'indicazione di quelle su cui Dany ha già un articolo. Serve a scegliere cosa scrivere.",
+    inputSchema: { type: "object", properties: { ore: { type: "number", description: "Finestra in ore (default 24, max 168)" }, categoria: { type: "string", description: "tech-it, linux, ai, gaming, selfhosted, tech-en" }, includi_gia_scritte: { type: "boolean" } } },
+  },
+  {
+    name: "news_queue",
+    description: "La coda «Da scrivere» del gestionale: notizie che Dany ha scelto. Con stato=tutte include anche scritte e scartate.",
+    inputSchema: { type: "object", properties: { stato: { type: "string", description: "da_scrivere (default), scritto, scartato, tutte" } } },
+  },
+  {
+    name: "news_queue_update",
+    description: "Aggiunge una notizia alla coda o ne cambia lo stato (da_scrivere, scritto, scartato). Usa «scritto» dopo aver scritto l'articolo. Non modifica WordPress.",
+    inputSchema: { type: "object", properties: { url: { type: "string" }, titolo: { type: "string" }, stato: { type: "string" }, nota: { type: "string" } }, required: ["url", "titolo"] },
+  },
+  {
     name: "run_diagnostics",
     description:
       "Esegue il controllo Debug del gestionale (variabili, Supabase, Search Console, WordPress, sito, cron, MCP) e restituisce problemi e avvisi con la causa e come sistemarli. Con completo=true misura anche PageSpeed.",
@@ -184,6 +200,27 @@ async function callTool(name: string, args: Record<string, unknown>): Promise<un
       const id = Number(args.id);
       if (!Number.isInteger(id) || id <= 0) throw new Error("id non valido");
       await saveNote(id, String(args.nota ?? ""));
+      return { ok: true };
+    }
+    case "news_fresh": {
+      const r = await getNews({ ore: num(args.ore, 24, 168), cat: typeof args.categoria === "string" ? args.categoria : undefined, perFeed: 6 });
+      const lista = r.items.filter((n) => args.includi_gia_scritte === true || !n.simile);
+      return {
+        totale: r.items.length,
+        mostrate: lista.length,
+        fonti_senza_risposta: r.fontiVuote,
+        notizie: lista.slice(0, 80).map((n) => ({ titolo: n.title, url: n.url, fonte: n.source, data: n.date, lingua: n.lang, categoria: n.cat, gia_scritta: n.simile ?? null, in_coda: n.inCoda ?? null, anteprima: n.snippet })),
+      };
+    }
+    case "news_queue": {
+      const q = await getQueue();
+      const st = typeof args.stato === "string" ? args.stato : "da_scrivere";
+      return q.missing ? { non_disponibile: q.missing } : { voci: q.items.filter((i) => st === "tutte" || i.stato === st) };
+    }
+    case "news_queue_update": {
+      const stato = typeof args.stato === "string" ? args.stato : "da_scrivere";
+      if (!["da_scrivere", "scritto", "scartato"].includes(stato)) throw new Error("stato non valido");
+      await queueUpsert({ url: String(args.url), title: String(args.titolo), stato: stato as "da_scrivere", note: typeof args.nota === "string" ? args.nota : undefined });
       return { ok: true };
     }
     case "scan_links":
