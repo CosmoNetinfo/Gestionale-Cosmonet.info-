@@ -13,6 +13,7 @@ const pages = [
   { href: "/report", label: "Report", icon: "☑" },
   { href: "/salute", label: "Salute del sito", icon: "✚" },
   { href: "/stato", label: "Stato servizi", icon: "●" },
+  { href: "/debug", label: "Debug", icon: "✱" },
   { href: "/indicizzazione", label: "Indicizzazione", icon: "◎" },
   { href: "/coda", label: "Coda", icon: "☷" },
   { href: "/velocita", label: "Velocità", icon: "⚡" },

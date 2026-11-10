@@ -31,7 +31,7 @@ function b64url(input: Buffer | string): string {
   return Buffer.from(input).toString("base64url");
 }
 
-async function getAccessToken(
+export async function getAccessToken(
   email: string,
   privateKey: string,
   scope = "https://www.googleapis.com/auth/webmasters.readonly",

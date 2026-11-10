@@ -5,6 +5,7 @@ import { getArticleContent } from "@/lib/wordpress";
 import { getGscStats, getPageQueries, normUrl, opportunity } from "@/lib/gsc";
 import { daysSince, daysSinceTouched, isToReview, reviewDays } from "@/lib/review";
 import { markReviewed, supabaseConfigured } from "@/lib/supabase";
+import { runDiagnostics } from "@/lib/diagnostics";
 import { STATO_LABEL } from "@/lib/types";
 import type { Article } from "@/lib/types";
 
@@ -104,6 +105,12 @@ const TOOLS = [
       required: ["id"],
     },
   },
+  {
+    name: "run_diagnostics",
+    description:
+      "Esegue il controllo Debug del gestionale (variabili, Supabase, Search Console, WordPress, sito, cron, MCP) e restituisce problemi e avvisi con la causa e come sistemarli. Con completo=true misura anche PageSpeed.",
+    inputSchema: { type: "object", properties: { completo: { type: "boolean", description: "Include PageSpeed (più lento)" } } },
+  },
 ];
 
 const num = (v: unknown, def: number, max: number) =>
@@ -126,6 +133,17 @@ async function callTool(name: string, args: Record<string, unknown>): Promise<un
         click_totali: pub.reduce((s, r) => s + (r.click ?? 0), 0),
         impressioni_totali: pub.reduce((s, r) => s + (r.impressioni ?? 0), 0),
         revisioni_salvabili: supabaseConfigured(),
+      };
+    }
+    case "run_diagnostics": {
+      const r = await runDiagnostics({ origin: null, full: args.completo === true });
+      const all = r.checks.filter((c) => c.gruppo !== "Pagine dell'app");
+      return {
+        generato: r.generato,
+        ok: all.filter((c) => c.esito === "ok").length,
+        problemi: all.filter((c) => c.esito === "fail"),
+        avvisi: all.filter((c) => c.esito === "warn"),
+        nota: "Le pagine interne si controllano solo dalla pagina Debug (controllo completo).",
       };
     }
     case "list_articles": {

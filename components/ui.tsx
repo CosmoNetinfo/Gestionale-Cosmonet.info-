@@ -48,10 +48,10 @@ export function Kpi({
   label: string;
   value: string | number;
   hint?: string;
-  tone?: "default" | "warn" | "ok";
+  tone?: "default" | "warn" | "ok" | "danger";
 }) {
   const color =
-    tone === "warn" ? "text-warn" : tone === "ok" ? "text-ok" : "text-ink";
+    tone === "warn" ? "text-warn" : tone === "ok" ? "text-ok" : tone === "danger" ? "text-danger" : "text-ink";
   return (
     <Card>
       <div className="text-xs font-medium uppercase tracking-wide text-muted">
