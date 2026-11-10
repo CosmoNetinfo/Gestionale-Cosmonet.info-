@@ -41,6 +41,7 @@ export default function Impostazioni() {
             <Row label="Search Console" ok={gsc} hint="GSC_SERVICE_ACCOUNT_JSON, GSC_SITE" />
             <Row label="Supabase (revisioni)" ok={sb} hint="SUPABASE_URL, SUPABASE_SECRET_KEY" />
             <Row label="Storico Search Console" ok={storico} hint="tabella gsc_page_daily su Supabase + CRON_SECRET" />
+            <Row label="PageSpeed (velocità)" ok={!!process.env.PAGESPEED_API_KEY} hint="PAGESPEED_API_KEY" />
             <Row label="Cosmo Memo" ok={memo} hint="COSMOMEMO_URL, COSMOMEMO_READ_TOKEN" />
             <Row label="Discord" ok={dc} hint="DISCORD_INVITE" />
             <Row label="Telegram" ok={tg} hint="TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID" />

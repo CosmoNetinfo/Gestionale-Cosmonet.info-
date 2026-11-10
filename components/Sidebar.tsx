@@ -11,6 +11,7 @@ const pages = [
   { href: "/avvisi", label: "Avvisi", icon: "⚑" },
   { href: "/indicizzazione", label: "Indicizzazione", icon: "◎" },
   { href: "/coda", label: "Coda", icon: "☷" },
+  { href: "/velocita", label: "Velocità", icon: "⚡" },
   { href: "/memo", label: "Cosmo Memo", icon: "✎" },
   { href: "/canali", label: "Canali", icon: "☰" },
   { href: "/impostazioni", label: "Impostazioni", icon: "⚙" },
