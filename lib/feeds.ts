@@ -56,3 +56,8 @@ export const FEEDS: Feed[] = [
   { cat: "tech-en", name: "Ollama (release)", url: "https://github.com/ollama/ollama/releases.atom", lang: "en" },
   { cat: "tech-en", name: "ComfyUI (release)", url: "https://github.com/Comfy-Org/ComfyUI/releases.atom", lang: "en" },
 ];
+
+/** Nome leggibile di una categoria (quelle importate da OPML possono essere nuove). */
+export function catLabel(cat: string): string {
+  return CATEGORIE[cat] ?? cat.replace(/[-_]+/g, " ").replace(/^./, (c) => c.toUpperCase());
+}

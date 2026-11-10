@@ -37,3 +37,13 @@ create table if not exists public.news_queue (
 alter table public.news_queue enable row level security;
 -- Permessi per la chiave segreta (serve se compare l'errore 403 sulla coda).
 grant all on table public.news_queue to service_role;
+
+-- Fonti RSS importate da OPML (pagina "Da scrivere" → Fonti). Se vuota si usa il catalogo di default.
+create table if not exists public.news_sources (
+  url   text primary key,
+  name  text not null,
+  cat   text not null default 'altro',
+  lang  text not null default 'it'
+);
+alter table public.news_sources enable row level security;
+grant all on table public.news_sources to service_role;

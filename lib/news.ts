@@ -2,7 +2,7 @@
  * "Da scrivere": legge i feed RSS del catalogo, toglie i doppioni, segnala le notizie su cui
  * hai già un articolo e gestisce la coda (tabella news_queue su Supabase).
  */
-import { FEEDS, type Feed } from "./feeds";
+import { FEEDS, catLabel, type Feed } from "./feeds";
 import { loadArticles } from "./articles";
 
 export interface NewsItem {
@@ -111,10 +111,13 @@ export interface NewsResult {
   fontiVuote: string[];
   coda: QueueItem[];
   codaMancante?: string;
+  categorie: { id: string; label: string }[];
+  sorgente: "database" | "catalogo";
 }
 
 export async function getNews(opts: { ore: number; cat?: string; perFeed?: number }): Promise<NewsResult> {
-  const feeds = FEEDS.filter((f) => !opts.cat || f.cat === opts.cat);
+  const src = await getSources();
+  const feeds = src.feeds.filter((f) => !opts.cat || f.cat === opts.cat);
   const [risultati, art, coda] = await Promise.all([
     Promise.all(feeds.map((f) => fetchFeed(f, opts.perFeed ?? 8))),
     loadArticles().catch(() => ({ articles: [] as { id: number; title: string; url: string; status: string }[] })),
@@ -145,6 +148,8 @@ export async function getNews(opts: { ore: number; cat?: string; perFeed?: numbe
     fontiVuote: feeds.filter((_, i) => risultati[i].length === 0).map((f) => f.name),
     coda: coda.items,
     codaMancante: coda.missing,
+    categorie: Array.from(new Set(src.feeds.map((f) => f.cat))).map((id) => ({ id, label: catLabel(id) })),
+    sorgente: src.origine,
   };
 }
 
@@ -202,4 +207,86 @@ export function codaMarkdown(items: QueueItem[]): string {
   const da = items.filter((q) => q.stato === "da_scrivere");
   const righe = da.map((q) => `- [${q.title}](${q.url}) — ${q.source}${q.note ? `\n  Nota: ${q.note}` : ""}`);
   return `# Notizie da scrivere (${da.length})\n\n${righe.join("\n") || "_nessuna_"}\n`;
+}
+
+// ---------- fonti (catalogo di default oppure quelle importate da OPML) ----------
+export async function getSources(): Promise<{ feeds: Feed[]; origine: "database" | "catalogo"; missing?: string }> {
+  const c = conf();
+  if (!c) return { feeds: FEEDS, origine: "catalogo" };
+  try {
+    const res = await fetch(`${c.url}/rest/v1/news_sources?select=url,name,cat,lang&order=cat.asc,name.asc&limit=1000`, { headers: hdr(c.key), cache: "no-store", signal: AbortSignal.timeout(8000) });
+    if (!res.ok) return { feeds: FEEDS, origine: "catalogo", missing: res.status === 404 ? "tabella news_sources non creata" : `errore ${res.status}` };
+    const rows = (await res.json()) as Feed[];
+    return rows.length ? { feeds: rows, origine: "database" } : { feeds: FEEDS, origine: "catalogo" };
+  } catch (e) {
+    return { feeds: FEEDS, origine: "catalogo", missing: (e as Error).message };
+  }
+}
+
+const slug = (s: string) =>
+  s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "altro";
+
+const attr = (tag: string, name: string) => {
+  const m = tag.match(new RegExp(`\\b${name}\\s*=\\s*("([^"]*)"|'([^']*)')`, "i"));
+  return (m?.[2] ?? m?.[3] ?? "").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#0?39;|&apos;/g, "'").trim();
+};
+
+/** Legge un file OPML: le cartelle diventano categorie, gli outline con xmlUrl diventano fonti. */
+export function parseOpml(xml: string): Feed[] {
+  const out: Feed[] = [];
+  const pila: string[] = [];
+  const re = /<outline\b[^>]*?(\/?)>|<\/outline>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(xml))) {
+    const tag = m[0];
+    if (tag.startsWith("</")) {
+      pila.pop();
+      continue;
+    }
+    const selfClosed = m[1] === "/";
+    const xmlUrl = attr(tag, "xmlUrl");
+    const nome = attr(tag, "title") || attr(tag, "text");
+    if (xmlUrl) {
+      try {
+        const u = new URL(xmlUrl);
+        if (!["http:", "https:"].includes(u.protocol)) throw new Error();
+        out.push({ url: u.href, name: nome || u.hostname, cat: slug(pila[pila.length - 1] ?? "altro"), lang: u.hostname.endsWith(".it") ? "it" : "en" });
+      } catch {
+        /* indirizzo non valido: salto */
+      }
+      if (!selfClosed) pila.push(pila[pila.length - 1] ?? "altro");
+    } else if (!selfClosed) {
+      pila.push(nome || "altro");
+    }
+  }
+  const visti = new Set<string>();
+  return out.filter((f) => !visti.has(f.url) && visti.add(f.url));
+}
+
+export async function importaFonti(feeds: Feed[], sostituisci: boolean): Promise<number> {
+  const c = conf();
+  if (!c) throw new Error("Supabase non collegato");
+  if (sostituisci) {
+    const del = await fetch(`${c.url}/rest/v1/news_sources?url=neq.`, { method: "DELETE", headers: hdr(c.key), cache: "no-store" });
+    if (!del.ok) throw new Error(`Supabase ${del.status}: tabella news_sources creata? (vedi supabase/schema.sql)`);
+  }
+  const res = await fetch(`${c.url}/rest/v1/news_sources?on_conflict=url`, {
+    method: "POST",
+    headers: hdr(c.key, { Prefer: "resolution=merge-duplicates,return=minimal" }),
+    body: JSON.stringify(feeds),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Supabase ${res.status}: ${(await res.text().catch(() => "")).slice(0, 200)}`);
+  return feeds.length;
+}
+
+export async function ripristinaCatalogo(): Promise<void> {
+  const c = conf();
+  if (!c) throw new Error("Supabase non collegato");
+  await fetch(`${c.url}/rest/v1/news_sources?url=neq.`, { method: "DELETE", headers: hdr(c.key), cache: "no-store" });
 }

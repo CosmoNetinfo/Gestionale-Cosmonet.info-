@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { getNews, codaMarkdown } from "@/lib/news";
-import { CATEGORIE } from "@/lib/feeds";
 import { Badge, Card, Kpi, PageHeader } from "@/components/ui";
 import { CopyButton } from "@/components/CopyButton";
 import { aggiungiInCoda, cambiaStato } from "./actions";
@@ -19,9 +18,9 @@ const quando = (iso: string | null) =>
 
 export default async function DaScrivere({ searchParams }: { searchParams: { ore?: string; cat?: string; scritti?: string } }) {
   const ore = [24, 72, 168].includes(Number(searchParams.ore)) ? Number(searchParams.ore) : 24;
-  const cat = searchParams.cat && CATEGORIE[searchParams.cat] ? searchParams.cat : undefined;
   const mostraScritti = searchParams.scritti === "1";
-  const { items, fonti, fontiVuote, coda, codaMancante } = await getNews({ ore, cat });
+  const { items, fonti, fontiVuote, coda, codaMancante, categorie, sorgente } = await getNews({ ore, cat: searchParams.cat || undefined });
+  const cat = categorie.some((c) => c.id === searchParams.cat) ? searchParams.cat : undefined;
   const visibili = items.filter((n) => mostraScritti || !n.simile);
   const daScrivere = coda.filter((q) => q.stato === "da_scrivere");
   const href = (o: Partial<{ ore: number; cat: string; scritti: string }>) => {
@@ -35,7 +34,15 @@ export default async function DaScrivere({ searchParams }: { searchParams: { ore
 
   return (
     <>
-      <PageHeader title="Da scrivere" subtitle="Notizie dai tuoi feed, senza quelle su cui hai già un articolo" />
+      <PageHeader
+        title="Da scrivere"
+        subtitle="Notizie dai tuoi feed, senza quelle su cui hai già un articolo"
+        right={
+          <Link href="/da-scrivere/fonti" className="rounded-md border border-line px-3 py-1.5 text-sm text-muted hover:border-primary hover:text-primary">
+            Fonti ({fonti}) · {sorgente === "database" ? "importate" : "catalogo"}
+          </Link>
+        }
+      />
 
       {codaMancante && (
         <div className="mb-5 rounded-card border border-warn/30 bg-warn-soft px-4 py-3 text-sm text-warn">
@@ -93,9 +100,9 @@ export default async function DaScrivere({ searchParams }: { searchParams: { ore
           <Link href={href({ cat: "" })} className={chip(!cat)}>
             Tutte
           </Link>
-          {Object.entries(CATEGORIE).map(([k, l]) => (
-            <Link key={k} href={href({ cat: k })} className={chip(cat === k)}>
-              {l}
+          {categorie.map((c) => (
+            <Link key={c.id} href={href({ cat: c.id })} className={chip(cat === c.id)}>
+              {c.label}
             </Link>
           ))}
           <span className="mx-2 text-line">|</span>
