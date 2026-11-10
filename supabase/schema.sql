@@ -35,3 +35,5 @@ create table if not exists public.news_queue (
   added_at   timestamptz not null default now()
 );
 alter table public.news_queue enable row level security;
+-- Permessi per la chiave segreta (serve se compare l'errore 403 sulla coda).
+grant all on table public.news_queue to service_role;
