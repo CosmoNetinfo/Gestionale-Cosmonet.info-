@@ -230,11 +230,12 @@ export default function LinkScanner() {
 
       {started && (
         <>
-          <div className="mt-5 grid grid-cols-4 gap-5">
+          <div className="mt-5 grid grid-cols-5 gap-4">
             <Kpi label="Link interni rotti" value={interni.length} tone={interni.length ? "danger" : "ok"} hint="verso pagine tue che non esistono" />
             <Kpi label="Link esterni rotti" value={esterni.length} tone={esterni.length ? "warn" : "ok"} hint="siti che non rispondono o 404" />
             <Kpi label="Immagini senza alt" value={acc.alt.length} tone={acc.alt.length ? "warn" : "ok"} hint={`in ${altPerArt.size} articoli`} />
             <Kpi label="Link interni http" value={acc.http.length} tone={acc.http.length ? "warn" : "ok"} hint="meglio https" />
+            <Kpi label="Non verificabili" value={acc.soft.length} hint="il sito rifiuta il controllo" />
           </div>
           <Box titolo="Link interni rotti" nota="Da correggere per primi: puntano a una pagina di Cosmonet che non c'è più.">
             <Righe items={interni} vuoto="Nessun link interno rotto finora." />
