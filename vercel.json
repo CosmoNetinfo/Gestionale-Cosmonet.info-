@@ -1,6 +1,16 @@
 {
   "crons": [
-    { "path": "/api/cron/gsc-snapshot", "schedule": "0 5 * * *" },
-    { "path": "/api/cron/telegram", "schedule": "0 7 * * *" }
+    {
+      "path": "/api/cron/gsc-snapshot",
+      "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/telegram",
+      "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/agenda",
+      "schedule": "0 4 * * *"
+    }
   ]
 }

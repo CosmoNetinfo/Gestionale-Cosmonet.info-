@@ -21,7 +21,7 @@ export type AgendaTask = {
   project: string | null; priority: string; status: string; notes: string | null; postponed_count?: number;
 };
 
-async function agendaCall(action: string, parameters: Record<string, unknown>) {
+export async function agendaCall(action: string, parameters: Record<string, unknown>) {
   const url = process.env.AGENDA_URL;
   if (!url) throw new Error("AGENDA_URL non configurata");
   const r = await fetch(url, {
