@@ -74,6 +74,7 @@ export default async function Velocita({ searchParams }: { searchParams?: { s?: 
   const okRes = results.filter((r) => r.ok);
   const err = results.find((r) => !r.ok)?.error;
   const media = okRes.length ? Math.round(okRes.reduce((s, r) => s + (r.score ?? 0), 0) / okRes.length) : 0;
+  const mediaTone: "default" | "warn" | "ok" = !okRes.length ? "default" : media >= 90 ? "ok" : "warn";
   const lenti = okRes.filter((r) => (r.score ?? 0) < 50).length;
   const sotto = okRes.filter((r) => (r.score ?? 0) < 90).length;
 
@@ -83,7 +84,7 @@ export default async function Velocita({ searchParams }: { searchParams?: { s?: 
       {err && <DemoBanner title="Attenzione." reason={err} />}
 
       <div className="grid grid-cols-3 gap-5">
-        <Kpi label="Punteggio medio" value={okRes.length ? media : "—"} hint={`su ${okRes.length} pagine (${strategy})`} tone={okRes.length ? (scoreTone(media) === "danger" ? "warn" : scoreTone(media)) : "default"} />
+        <Kpi label="Punteggio medio" value={okRes.length ? media : "—"} hint={`su ${okRes.length} pagine (${strategy})`} tone={mediaTone} />
         <Kpi label="Sotto 90" value={sotto} hint="da migliorare" tone={sotto ? "warn" : "ok"} />
         <Kpi label="Lente (sotto 50)" value={lenti} hint="priorità" tone={lenti ? "warn" : "ok"} />
       </div>
