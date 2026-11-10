@@ -56,7 +56,7 @@ export default async function Debug({ searchParams }: { searchParams: { full?: s
     <>
       <PageHeader
         title="Debug"
-        subtitle={`Controllo di tutto il gestionale · ${new Date(result.generato).toLocaleString("it-IT")} · ${(result.durataMs / 1000).toFixed(1)} s`}
+        subtitle={`Controllo di tutto il gestionale · ${new Date(result.generato).toLocaleString("it-IT", { timeZone: "Europe/Rome" })} · ${(result.durataMs / 1000).toFixed(1)} s`}
         right={
           <Badge tone={fail.length ? "danger" : warn.length ? "warn" : "ok"}>
             {fail.length ? `${fail.length} problemi` : warn.length ? `${warn.length} avvisi` : "Tutto funziona"}

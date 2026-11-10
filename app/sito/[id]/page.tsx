@@ -200,7 +200,7 @@ export default async function Scheda({
             />
             <div className="mt-2 flex items-center justify-between gap-3">
               <span className="text-xs text-muted">
-                {nota.note ? `Ultimo salvataggio: ${new Date(nota.note.updated_at).toLocaleString("it-IT")}` : "Nessuna nota salvata."}
+                {nota.note ? `Ultimo salvataggio: ${new Date(nota.note.updated_at).toLocaleString("it-IT", { timeZone: "Europe/Rome" })}` : "Nessuna nota salvata."}
               </span>
               <button className="rounded-md border border-line px-3 py-1.5 text-sm hover:border-primary hover:text-primary">Salva nota</button>
             </div>

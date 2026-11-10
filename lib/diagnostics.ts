@@ -619,7 +619,7 @@ export async function runDiagnostics(opts: { origin: string | null; full: boolea
 
 export function reportText(r: DiagnosticsResult): string {
   const tag: Record<Esito, string> = { ok: "OK", warn: "ATTENZIONE", fail: "PROBLEMA", info: "INFO" };
-  const lines = [`Report Debug Cosmo Control — ${r.generato} (${r.completo ? "completo" : "rapido"}, ${(r.durataMs / 1000).toFixed(1)} s)`, ""];
+  const lines = [`Report Debug Cosmo Control — ${new Date(r.generato).toLocaleString("it-IT", { timeZone: "Europe/Rome" })} ora italiana (${r.completo ? "completo" : "rapido"}, ${(r.durataMs / 1000).toFixed(1)} s)`, ""];
   let g = "";
   for (const c of r.checks) {
     if (c.gruppo !== g) {
