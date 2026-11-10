@@ -2,6 +2,8 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { Badge, Card, Kpi, PageHeader } from "@/components/ui";
 import { CopyButton } from "@/components/CopyButton";
+import { detectChat, telegramConfigured } from "@/lib/telegram";
+import { inviaProvaTelegram } from "./actions";
 import { reportText, runDiagnostics, type Check, type Esito } from "@/lib/diagnostics";
 
 export const dynamic = "force-dynamic";
@@ -32,12 +34,16 @@ function Row({ c, showFix = false }: { c: Check; showFix?: boolean }) {
   );
 }
 
-export default async function Debug({ searchParams }: { searchParams: { full?: string } }) {
+export default async function Debug({ searchParams }: { searchParams: { full?: string; tg?: string; m?: string } }) {
   const h = headers();
   const host = h.get("x-forwarded-host") ?? h.get("host");
   const proto = h.get("x-forwarded-proto") ?? (host?.startsWith("localhost") ? "http" : "https");
   const origin = host ? `${proto}://${host}` : null;
   const full = searchParams.full === "1";
+
+  const hasToken = Boolean(process.env.TELEGRAM_BOT_TOKEN?.trim());
+  const needChat = hasToken && !process.env.TELEGRAM_CHAT_ID?.trim();
+  const detected = needChat ? await detectChat() : null;
 
   const result = await runDiagnostics({ origin, full });
   const { checks } = result;
@@ -70,6 +76,29 @@ export default async function Debug({ searchParams }: { searchParams: { full?: s
           {full ? "Controllo completo: ha aperto ogni pagina." : "Il controllo completo apre ogni pagina e misura PageSpeed: richiede 30-60 secondi."}
         </span>
       </div>
+
+      {hasToken && (
+        <Card className="mb-6">
+          <h2 className="mb-2 text-base font-semibold">Bot Telegram</h2>
+          {searchParams.tg === "ok" && <p className="mb-2 text-sm text-ok">Messaggio di prova inviato: controlla Telegram.</p>}
+          {searchParams.tg === "errore" && <p className="mb-2 text-sm text-danger">Invio fallito: {searchParams.m}</p>}
+          {needChat ? (
+            detected?.id ? (
+              <p className="text-sm">
+                Chat trovata{detected.name ? ` (${detected.name})` : ""}. Aggiungi su Vercel la variabile <strong>TELEGRAM_CHAT_ID</strong> con questo valore, poi Redeploy:{" "}
+                <code className="rounded bg-canvas px-1.5 py-0.5 font-mono text-sm">{detected.id}</code>
+              </p>
+            ) : (
+              <p className="text-sm text-muted">{detected?.note}</p>
+            )
+          ) : telegramConfigured() ? (
+            <form action={inviaProvaTelegram}>
+              <button className="rounded-md border border-line px-3 py-1.5 text-sm hover:border-primary hover:text-primary">Invia messaggio di prova</button>
+              <span className="ml-3 text-xs text-muted">Riepilogo ogni lunedì alle 7; avviso quotidiano solo se il Debug trova problemi.</span>
+            </form>
+          ) : null}
+        </Card>
+      )}
 
       <div className="mb-6 grid grid-cols-3 gap-5">
         <Kpi label="Funzionano" value={ok} tone="ok" />
