@@ -4,6 +4,7 @@ import { loadArticles } from "@/lib/articles";
 import { runDiagnostics } from "@/lib/diagnostics";
 import { getComparison, getGscDaily, gscEndDate, gscRows, isoDate, normUrl } from "@/lib/gsc";
 import { daysSince, isToReview } from "@/lib/review";
+import { facebookAttivo, facebookStato } from "@/lib/facebook";
 import { esc, sendTelegram, telegramConfigured } from "@/lib/telegram";
 
 export const dynamic = "force-dynamic";
@@ -133,6 +134,14 @@ export async function GET(req: NextRequest) {
       const text = ["⚠️ <b>Cosmo Control: ci sono problemi</b>", ...bad.slice(0, 8).map((c) => `• ${esc(c.gruppo)} · ${esc(c.nome)}: ${esc(c.dettaglio)}`)].join("\n");
       const r = await sendTelegram(text);
       (r.ok ? sent : errors).push(r.ok ? "problemi" : r.message);
+    }
+  }
+  if (force !== "weekly" && force !== "anomalie" && facebookAttivo()) {
+    const fb = await facebookStato();
+    if (!fb.ok) {
+      const text = ["⚠️ <b>Facebook: il collegamento non funziona</b>", esc(fb.errore ?? ""), "Rifai il login dal Graph API Explorer e aggiorna FACEBOOK_PAGE_TOKEN su Vercel."].join("\n");
+      const r = await sendTelegram(text);
+      (r.ok ? sent : errors).push(r.ok ? "facebook" : r.message);
     }
   }
   return NextResponse.json({ ok: errors.length === 0, inviati: sent, errori: errors });
