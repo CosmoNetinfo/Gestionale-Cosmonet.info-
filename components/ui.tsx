@@ -10,12 +10,12 @@ export function PageHeader({
   right?: ReactNode;
 }) {
   return (
-    <div className="mb-8 flex items-end justify-between">
-      <div>
-        <h1 className="text-2xl font-semibold text-ink">{title}</h1>
+    <div className="mb-8 flex items-end justify-between gap-6">
+      <div className="min-w-0">
+        <h1 className="text-2xl font-semibold leading-tight text-ink">{title}</h1>
         {subtitle && <p className="mt-1 text-sm text-muted">{subtitle}</p>}
       </div>
-      {right}
+      {right && <div className="shrink-0">{right}</div>}
     </div>
   );
 }
@@ -30,7 +30,7 @@ export function Card({
   return (
     <div
       className={
-        "rounded-card border border-line bg-surface p-5 shadow-[0_1px_2px_rgba(31,45,58,0.04)] " +
+        "min-w-0 rounded-card border border-line bg-surface p-5 shadow-[0_1px_2px_rgba(31,45,58,0.04)] " +
         className
       }
     >
@@ -57,7 +57,7 @@ export function Kpi({
       <div className="text-xs font-medium uppercase tracking-wide text-muted">
         {label}
       </div>
-      <div className={"mt-2 text-3xl font-semibold " + color}>{value}</div>
+      <div className={"mt-2 truncate text-2xl font-semibold xl:text-3xl " + color}>{value}</div>
       {hint && <div className="mt-1 text-xs text-muted">{hint}</div>}
     </Card>
   );
@@ -81,7 +81,7 @@ export function Badge({
   return (
     <span
       className={
-        "inline-block whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium " +
+        "inline-block max-w-full truncate rounded-full px-2.5 py-0.5 align-middle text-xs font-medium " +
         badgeTones[tone]
       }
     >

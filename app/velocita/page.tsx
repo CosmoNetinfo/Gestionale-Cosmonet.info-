@@ -5,10 +5,10 @@ import { pagespeedConfigured, runMany, type FieldMetric, type Strategy } from "@
 import { Badge, Card, DemoBanner, Kpi, PageHeader } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 120;
+export const maxDuration = 60;
 
 const dec = (v: number, d = 1) => v.toFixed(d).replace(".", ",");
-const COUNT = 6;
+const COUNT = 4;
 
 function scoreTone(s: number): "ok" | "warn" | "danger" {
   return s >= 90 ? "ok" : s >= 50 ? "warn" : "danger";
@@ -24,7 +24,7 @@ export default async function Velocita({ searchParams }: { searchParams?: { s?: 
   const header = (
     <PageHeader
       title="Velocità"
-      subtitle="PageSpeed e Core Web Vitals: home e gli articoli che portano più click"
+      subtitle="PageSpeed e Core Web Vitals: home e i 4 articoli che portano più click"
       right={
         <div className="flex gap-2 text-sm">
           {(["mobile", "desktop"] as const).map((x) => (

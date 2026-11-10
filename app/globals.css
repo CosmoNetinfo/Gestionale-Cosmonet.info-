@@ -19,3 +19,32 @@ body {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(350%); }
 }
+
+/* Niente testo fuori dai riquadri: le parole lunghe vanno a capo e le colonne possono restringersi. */
+main,
+.grid > *,
+.flex > * {
+  min-width: 0;
+}
+h1,
+h2,
+h3,
+p,
+li,
+dt,
+dd,
+a,
+label {
+  overflow-wrap: anywhere;
+}
+/* Nelle tabelle le intestazioni e i numeri restano su una riga; solo i titoli lunghi si accorciano. */
+th {
+  white-space: nowrap;
+}
+td {
+  overflow-wrap: break-word;
+  vertical-align: middle;
+}
+td:not(:has(a)) {
+  white-space: nowrap;
+}

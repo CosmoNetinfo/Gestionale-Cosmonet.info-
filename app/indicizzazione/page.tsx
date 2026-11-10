@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { loadArticles } from "@/lib/articles";
-import { inspectMany, listSitemaps } from "@/lib/gsc";
+import { inspectLink, inspectMany, listSitemaps } from "@/lib/gsc";
+import { inviaSitemap } from "./actions";
 import { Badge, Card, DemoBanner, Kpi, PageHeader } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +16,7 @@ function tone(verdict: string): "ok" | "warn" | "danger" | "neutral" {
   return "warn";
 }
 
-export default async function Indicizzazione() {
+export default async function Indicizzazione({ searchParams }: { searchParams?: { ok?: string; errore?: string } }) {
   const { articles } = await loadArticles();
   const recenti = articles
     .filter((a) => a.status === "publish")
@@ -31,6 +32,10 @@ export default async function Indicizzazione() {
   return (
     <>
       <PageHeader title="Indicizzazione" subtitle={`Gli ultimi ${COUNT} articoli pubblicati, secondo Google`} />
+      {searchParams?.ok && (
+        <div className="mb-6 rounded-card border border-ok/30 bg-ok-soft px-4 py-3 text-sm text-ok">{searchParams.ok}. Google la rilegge a breve.</div>
+      )}
+      {searchParams?.errore && <DemoBanner title="Sitemap non inviata." reason={searchParams.errore} />}
       {err && <DemoBanner title="Attenzione." reason={`Controllo indicizzazione: ${err}`} />}
       {sm.note && <DemoBanner title="Attenzione." reason={`Sitemap: ${sm.note}`} />}
 
@@ -48,6 +53,7 @@ export default async function Indicizzazione() {
               <th className="px-5 py-3 font-medium">Pubblicato</th>
               <th className="px-5 py-3 font-medium">Stato per Google</th>
               <th className="px-5 py-3 font-medium">Ultima scansione</th>
+              <th className="px-5 py-3 font-medium">Indicizzazione</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
@@ -67,6 +73,21 @@ export default async function Indicizzazione() {
                 </td>
                 <td className="whitespace-nowrap px-5 py-2.5 text-muted">
                   {s.lastCrawl ? new Date(s.lastCrawl).toLocaleDateString("it-IT") : "—"}
+                </td>
+                <td className="whitespace-nowrap px-5 py-2.5">
+                  {inspectLink(a.url) && (
+                    <a
+                      href={inspectLink(a.url)!}
+                      target="_blank"
+                      rel="noreferrer"
+                      className={
+                        "rounded-md border px-2 py-1 text-xs " +
+                        (s.verdict === "PASS" ? "border-line text-muted hover:text-ink" : "border-primary text-primary hover:bg-primary-soft")
+                      }
+                    >
+                      Richiedi ↗
+                    </a>
+                  )}
                 </td>
               </tr>
             ))}
@@ -88,11 +109,27 @@ export default async function Indicizzazione() {
                   {s.lastDownloaded && <span>letta il {new Date(s.lastDownloaded).toLocaleDateString("it-IT")}</span>}
                   {s.errors > 0 ? <Badge tone="danger">{s.errors} errori</Badge> : <Badge tone="ok">nessun errore</Badge>}
                   {s.warnings > 0 && <Badge tone="warn">{s.warnings} avvisi</Badge>}
+                  <form action={inviaSitemap}>
+                    <input type="hidden" name="path" value={s.path} />
+                    <button type="submit" className="rounded-md border border-line px-2 py-1 text-xs text-muted hover:border-primary hover:text-primary">
+                      Reinvia
+                    </button>
+                  </form>
                 </span>
               </li>
             ))}
           </ul>
         )}
+        <form action={inviaSitemap} className="mt-4 flex gap-2 border-t border-line pt-4">
+          <input
+            name="path"
+            placeholder="https://www.cosmonet.info/sitemap_index.xml"
+            className="flex-1 rounded-lg border border-line bg-surface px-3 py-2 text-sm"
+          />
+          <button type="submit" className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:opacity-90">
+            Invia sitemap
+          </button>
+        </form>
       </Card>
     </>
   );

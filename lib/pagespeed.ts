@@ -35,6 +35,7 @@ export async function runPagespeed(url: string, strategy: Strategy): Promise<Spe
   try {
     const res = await fetch(`https://www.googleapis.com/pagespeedonline/v5/runPagespeed?${q}`, {
       next: { revalidate: 21600 },
+      signal: AbortSignal.timeout(40000),
     });
     if (!res.ok) {
       const body = (await res.text().catch(() => "")).slice(0, 160).replace(/\s+/g, " ");
@@ -63,15 +64,12 @@ export async function runPagespeed(url: string, strategy: Strategy): Promise<Spe
       },
     };
   } catch (e) {
-    return { url, ok: false, error: e instanceof Error ? e.message : "errore di rete" };
+    const timeout = e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError");
+    return { url, ok: false, error: timeout ? "Google ha impiegato troppo tempo: riprova tra poco" : e instanceof Error ? e.message : "errore di rete" };
   }
 }
 
-/** Analizza più indirizzi, 3 alla volta. */
+/** Analizza tutti gli indirizzi insieme (ognuno ha un limite di 40 secondi), per restare sotto il limite di Vercel. */
 export async function runMany(urls: string[], strategy: Strategy): Promise<SpeedResult[]> {
-  const out: SpeedResult[] = [];
-  for (let i = 0; i < urls.length; i += 3) {
-    out.push(...(await Promise.all(urls.slice(i, i + 3).map((u) => runPagespeed(u, strategy)))));
-  }
-  return out;
+  return Promise.all(urls.map((u) => runPagespeed(u, strategy)));
 }

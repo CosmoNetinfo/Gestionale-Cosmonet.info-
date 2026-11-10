@@ -4,7 +4,7 @@ import { loadArticles } from "@/lib/articles";
 import { supabaseConfigured } from "@/lib/supabase";
 import { getHistoryOrNone } from "./data";
 import { segnaRivisto } from "../actions";
-import { getGscStats, getPageDaily, getPageQueries, inspectUrl, normUrl, opportunity } from "@/lib/gsc";
+import { getGscStats, getPageDaily, getPageQueries, inspectLink, inspectUrl, normUrl, opportunity } from "@/lib/gsc";
 import { daysSince, daysSinceTouched, isToReview } from "@/lib/review";
 import { STATO_LABEL } from "@/lib/types";
 import { Badge, Card, DemoBanner, Kpi, PageHeader } from "@/components/ui";
@@ -52,7 +52,7 @@ export default async function Scheda({
         title={a.title}
         subtitle={`Articolo ${a.id} · ${a.category} · ${STATO_LABEL[a.status]}`}
         right={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
             <Link href="/sito" className="rounded-lg border border-line px-3 py-2 text-sm text-muted hover:text-ink">
               ← Elenco
             </Link>
@@ -133,6 +133,16 @@ export default async function Scheda({
                   <Badge tone={index.verdict === "PASS" ? "ok" : index.verdict === "FAIL" ? "danger" : "warn"}>
                     {index.coverage || "Sconosciuto"}
                   </Badge>
+                </dd>
+              </div>
+            )}
+            {a.status === "publish" && inspectLink(a.url) && (
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-muted">Indicizzazione</dt>
+                <dd>
+                  <a href={inspectLink(a.url)!} target="_blank" rel="noreferrer" className="text-primary hover:underline">
+                    Richiedi su Google ↗
+                  </a>
                 </dd>
               </div>
             )}

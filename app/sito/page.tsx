@@ -77,7 +77,7 @@ export default async function Sito({
     return `/sito?stato=${filtro}${q ? `&q=${encodeURIComponent(q)}` : ""}&sort=${k}&dir=${nextDir}`;
   };
   const Th = ({ k, children, right }: { k: string; children: React.ReactNode; right?: boolean }) => (
-    <th className={"px-4 py-3 font-medium " + (right ? "text-right" : "")}>
+    <th className={"px-2 py-3 font-medium " + (right ? "text-right" : "")}>
       <Link href={sortHref(k)} className="hover:text-ink">
         {children}
         {sort === k ? (dir === "desc" ? " ↓" : " ↑") : ""}
@@ -137,16 +137,16 @@ export default async function Sito({
       </div>
 
       <Card className="overflow-hidden p-0">
-        <table className="w-full text-left text-sm">
+        <table className="w-full text-left text-[13px]">
           <thead className="border-b border-line bg-canvas text-xs uppercase tracking-wide text-muted">
             <tr>
               <Th k="id">ID</Th>
-              <th className="px-4 py-3 font-medium">Titolo</th>
-              <th className="px-4 py-3 font-medium">Categoria</th>
+              <th className="px-2 py-3 font-medium">Titolo</th>
+              <th className="px-2 py-3 font-medium">Categoria</th>
               <Th k="date">Data</Th>
               <Th k="days">Giorni</Th>
-              <th className="px-4 py-3 font-medium">Stato</th>
-              <th className="px-4 py-3 font-medium">Revisione</th>
+              <th className="px-2 py-3 font-medium">Stato</th>
+              <th className="px-2 py-3 font-medium">Revisione</th>
               <Th k="click" right>Click</Th>
               <Th k="impr" right>Impr.</Th>
               <Th k="ctr" right>CTR</Th>
@@ -164,8 +164,8 @@ export default async function Sito({
             )}
             {rows.map((a) => (
               <tr key={a.id} className="hover:bg-canvas/60">
-                <td className="px-4 py-3 text-muted">{a.id}</td>
-                <td className="max-w-md px-4 py-3">
+                <td className="px-2 py-3 text-muted">{a.id}</td>
+                <td className="max-w-[12rem] px-2 py-3">
                   <Link
                     href={`/sito/${a.id}`}
                     title="Apri la scheda dell'articolo"
@@ -174,17 +174,17 @@ export default async function Sito({
                     {a.title}
                   </Link>
                 </td>
-                <td className="px-4 py-3 text-muted">{a.category}</td>
-                <td className="whitespace-nowrap px-4 py-3 text-muted">
+                <td className="px-2 py-3 text-muted">{a.category}</td>
+                <td className="whitespace-nowrap px-2 py-3 text-muted">
                   {new Date(a.date).toLocaleDateString("it-IT")}
                 </td>
-                <td className="px-4 py-3 text-muted">
+                <td className="px-2 py-3 text-muted">
                   {a.status === "future" ? "—" : daysSince(a.date)}
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-2 py-3">
                   <Badge tone={statoTone[a.status]}>{STATO_LABEL[a.status]}</Badge>
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-2 py-3">
                   <div className="flex items-center gap-2">
                     {isToReview(a) ? (
                       <Badge tone="warn">Da rivedere · {daysSinceTouched(a)} g</Badge>
@@ -213,15 +213,15 @@ export default async function Sito({
                   const zero = gsc.configured && a.status === "publish";
                   return (
                     <>
-                      <td className="px-4 py-3 text-right">{g ? g.clicks : zero ? 0 : dash}</td>
-                      <td className="px-4 py-3 text-right">{g ? g.impressions : zero ? 0 : dash}</td>
-                      <td className="px-4 py-3 text-right text-muted">
+                      <td className="px-2 py-3 text-right">{g ? g.clicks : zero ? 0 : dash}</td>
+                      <td className="px-2 py-3 text-right">{g ? g.impressions : zero ? 0 : dash}</td>
+                      <td className="px-2 py-3 text-right text-muted">
                         {g ? (g.ctr * 100).toFixed(1).replace(".", ",") + "%" : dash}
                       </td>
-                      <td className="px-4 py-3 text-right text-muted">
+                      <td className="px-2 py-3 text-right text-muted">
                         {g ? g.position.toFixed(1).replace(".", ",") : dash}
                       </td>
-                      <td className="px-4 py-3 text-right font-medium">
+                      <td className="px-2 py-3 text-right font-medium">
                         {potenziale(a) > 0 ? potenziale(a) : <span className="font-normal text-muted">—</span>}
                       </td>
                     </>

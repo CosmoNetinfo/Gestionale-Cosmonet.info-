@@ -31,13 +31,17 @@ function b64url(input: Buffer | string): string {
   return Buffer.from(input).toString("base64url");
 }
 
-async function getAccessToken(email: string, privateKey: string): Promise<string> {
+async function getAccessToken(
+  email: string,
+  privateKey: string,
+  scope = "https://www.googleapis.com/auth/webmasters.readonly",
+): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   const header = b64url(JSON.stringify({ alg: "RS256", typ: "JWT" }));
   const claim = b64url(
     JSON.stringify({
       iss: email,
-      scope: "https://www.googleapis.com/auth/webmasters.readonly",
+      scope,
       aud: "https://oauth2.googleapis.com/token",
       iat: now,
       exp: now + 3600,
@@ -550,4 +554,37 @@ export async function listSitemaps(): Promise<{ sitemaps: SitemapInfo[]; note?: 
   } catch (e) {
     return { sitemaps: [], note: (e as Error).message };
   }
+}
+
+/** Reinvia (o invia per la prima volta) una sitemap a Google. Serve il permesso "Completo" per l'account di servizio. */
+export async function submitSitemap(path: string): Promise<{ ok: boolean; message: string }> {
+  const raw = process.env.GSC_SERVICE_ACCOUNT_JSON;
+  const site = process.env.GSC_SITE;
+  if (!raw || !site) return { ok: false, message: "Search Console non collegato" };
+  if (!/^https?:\/\//.test(path)) return { ok: false, message: "Indirizzo della sitemap non valido" };
+  try {
+    const creds = JSON.parse(raw) as { client_email: string; private_key: string };
+    const token = await getAccessToken(creds.client_email, creds.private_key, "https://www.googleapis.com/auth/webmasters");
+    const res = await fetch(
+      `https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(site)}/sitemaps/${encodeURIComponent(path)}`,
+      { method: "PUT", headers: { Authorization: `Bearer ${token}`, "Content-Length": "0" }, cache: "no-store" },
+    );
+    if (res.ok) return { ok: true, message: "Sitemap inviata a Google" };
+    if (res.status === 403)
+      return {
+        ok: false,
+        message:
+          "Google non permette la scrittura: in Search Console (Impostazioni → Utenti e autorizzazioni) l'account di servizio deve avere il permesso Completo, non Limitato.",
+      };
+    return { ok: false, message: `Search Console errore ${res.status}` };
+  } catch (e) {
+    return { ok: false, message: (e as Error).message };
+  }
+}
+
+/** Indirizzo della pagina di Search Console dove, con un clic, si chiede l'indicizzazione di un URL. */
+export function inspectLink(url: string): string | null {
+  const site = process.env.GSC_SITE;
+  if (!site) return null;
+  return `https://search.google.com/search-console/inspect?resource_id=${encodeURIComponent(site)}&id=${encodeURIComponent(url)}`;
 }
