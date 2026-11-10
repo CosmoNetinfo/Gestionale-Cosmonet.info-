@@ -6,6 +6,9 @@ import { getGscStats, getPageQueries, normUrl, opportunity } from "@/lib/gsc";
 import { daysSince, daysSinceTouched, isToReview, reviewDays } from "@/lib/review";
 import { markReviewed, supabaseConfigured } from "@/lib/supabase";
 import { runDiagnostics } from "@/lib/diagnostics";
+import { revisionImpact, segments, siteQueries } from "@/lib/insights";
+import { getNote, saveNote } from "@/lib/notes";
+import { scanBatch } from "@/lib/linkcheck";
 import { STATO_LABEL } from "@/lib/types";
 import type { Article } from "@/lib/types";
 
@@ -106,6 +109,36 @@ const TOOLS = [
     },
   },
   {
+    name: "site_queries",
+    description: "Ricerche di Google degli ultimi 28 giorni (come la pagina Ricerche): le prime per click, quelle nuove, quelle sparite rispetto ai 28 giorni prima e quelle con molte impressioni senza click.",
+    inputSchema: { type: "object", properties: { limite: { type: "number", description: "Quante ricerche top (default 40)" } } },
+  },
+  {
+    name: "segments",
+    description: "Click e impressioni degli ultimi 28 giorni per dispositivo, paese e categoria (come la pagina Segmenti), con il confronto sui 28 giorni prima.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "revision_impact",
+    description: "Impatto delle revisioni: per ogni articolo ritoccato, click al giorno nei 28 giorni dopo contro i 28 prima (come la pagina Impatto revisioni).",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "get_note",
+    description: "Legge la nota che Dany ha scritto su un articolo nel gestionale.",
+    inputSchema: { type: "object", properties: { id: { type: "number", description: "ID articolo WordPress" } }, required: ["id"] },
+  },
+  {
+    name: "save_note",
+    description: "Salva (sostituisce) la nota di un articolo nel gestionale. Testo vuoto = cancella la nota. Non modifica WordPress.",
+    inputSchema: { type: "object", properties: { id: { type: "number" }, nota: { type: "string" } }, required: ["id", "nota"] },
+  },
+  {
+    name: "scan_links",
+    description: "Controlla link e immagini di un blocco di 25 articoli pubblicati (pagina 1 = i più recenti; il totale è nel risultato): link rotti interni/esterni, immagini senza alt, link http.",
+    inputSchema: { type: "object", properties: { pagina: { type: "number", description: "Numero del blocco, da 1" } } },
+  },
+  {
     name: "run_diagnostics",
     description:
       "Esegue il controllo Debug del gestionale (variabili, Supabase, Search Console, WordPress, sito, cron, MCP) e restituisce problemi e avvisi con la causa e come sistemarli. Con completo=true misura anche PageSpeed.",
@@ -135,6 +168,26 @@ async function callTool(name: string, args: Record<string, unknown>): Promise<un
         revisioni_salvabili: supabaseConfigured(),
       };
     }
+    case "site_queries":
+      return siteQueries(num(args.limite, 40, 100));
+    case "segments":
+      return segments();
+    case "revision_impact":
+      return revisionImpact();
+    case "get_note": {
+      const id = Number(args.id);
+      if (!Number.isInteger(id) || id <= 0) throw new Error("id non valido");
+      const r = await getNote(id);
+      return r.missing ? { nota: null, non_disponibile: r.missing } : { nota: r.note?.note ?? null, aggiornata: r.note?.updated_at ?? null };
+    }
+    case "save_note": {
+      const id = Number(args.id);
+      if (!Number.isInteger(id) || id <= 0) throw new Error("id non valido");
+      await saveNote(id, String(args.nota ?? ""));
+      return { ok: true };
+    }
+    case "scan_links":
+      return scanBatch(num(args.pagina, 1, 200));
     case "run_diagnostics": {
       const r = await runDiagnostics({ origin: null, full: args.completo === true });
       const all = r.checks.filter((c) => c.gruppo !== "Pagine dell'app");
