@@ -5,6 +5,7 @@ import { getGscDaily, getGscStats, normUrl, opportunity } from "@/lib/gsc";
 import { LineChart } from "@/components/LineChart";
 import { daysSinceTouched, isToReview, reviewDays } from "@/lib/review";
 import { Badge, Card, DemoBanner, Kpi, PageHeader } from "@/components/ui";
+import { RefreshButton } from "@/components/RefreshButton";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +23,8 @@ export default async function Panoramica() {
 
   const published = articles.filter((a) => a.status === "publish");
   const scheduled = articles.filter((a) => a.status === "future");
-  const drafts = articles.filter((a) => a.status === "draft" || a.status === "pending");
+  const drafts = articles.filter((a) => a.status === "draft");
+  const pending = articles.filter((a) => a.status === "pending");
   const toReview = articles
     .filter(isToReview)
     .sort((a, b) => pot(b) - pot(a) || daysSinceTouched(b) - daysSinceTouched(a));
@@ -33,11 +35,14 @@ export default async function Panoramica() {
         title="Panoramica"
         subtitle="Il quadro generale di Cosmonet.info"
         right={
-          toReview.length > 0 ? (
-            <Link href="/prossimo" className="rounded-lg border border-line px-3 py-2 text-sm font-medium text-muted hover:border-primary hover:text-primary">
-              Prossimo da rivedere →
-            </Link>
-          ) : undefined
+          <div className="flex items-center gap-2">
+            <RefreshButton />
+            {toReview.length > 0 && (
+              <Link href="/prossimo" className="rounded-lg border border-line px-3 py-2 text-sm font-medium text-muted hover:border-primary hover:text-primary">
+                Prossimo da rivedere →
+              </Link>
+            )}
+          </div>
         }
       />
 
@@ -46,7 +51,7 @@ export default async function Panoramica() {
       <div className="grid grid-cols-4 gap-5">
         <Kpi label="Pubblicati" value={published.length} />
         <Kpi label="Programmati" value={scheduled.length} />
-        <Kpi label="Bozze" value={drafts.length} />
+        <Kpi label="Bozze" value={drafts.length} hint={pending.length > 0 ? `più ${pending.length} in attesa di revisione` : undefined} />
         <Kpi
           label="Da rivedere"
           value={toReview.length}
