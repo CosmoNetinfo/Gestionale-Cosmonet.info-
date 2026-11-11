@@ -11,6 +11,7 @@ import { getNote, saveNote } from "@/lib/notes";
 import { getNews, getQueue, queueUpsert } from "@/lib/news";
 import { scanBatch } from "@/lib/linkcheck";
 import { giaPubblicato, pubblicaOvunque, storicoSocial } from "@/lib/social";
+import { instagramAttivo } from "@/lib/instagram";
 import { facebookAttivita, facebookAttivo, facebookRispondi } from "@/lib/facebook";
 import { discordForum, discordPubblicaAttivo } from "@/lib/discord";
 import { STATO_LABEL } from "@/lib/types";
@@ -164,8 +165,8 @@ const TOOLS = [
   },
   {
     name: "social_publish",
-    description: "Pubblica un post su Facebook e/o Discord (LinkedIn resta manuale). ATTENZIONE: è pubblico e non annullabile da qui. Chiamalo SOLO dopo che Dany ha approvato in chat il testo esatto; imposta conferma=true solo in quel caso. Testo senza asterischi né markdown. Rifiuta un link già pubblicato salvo forza=true.",
-    inputSchema: { type: "object", properties: { testo: { type: "string", description: "Testo del post, max 1900 caratteri" }, link: { type: "string" }, titolo: { type: "string", description: "Titolo del thread Discord (solo se il canale è Forum)" }, facebook: { type: "boolean" }, discord: { type: "boolean" }, conferma: { type: "boolean", description: "true solo se Dany ha approvato questo testo" }, forza: { type: "boolean", description: "Ripubblica anche se il link è già nello storico" } }, required: ["testo", "conferma"] },
+    description: "Pubblica un post su Facebook, Discord e/o Instagram (LinkedIn resta manuale). ATTENZIONE: è pubblico e non annullabile da qui. Chiamalo SOLO dopo che Dany ha approvato in chat il testo esatto; imposta conferma=true solo in quel caso. Testo senza asterischi né markdown. Rifiuta un link già pubblicato salvo forza=true.",
+    inputSchema: { type: "object", properties: { testo: { type: "string", description: "Testo del post, max 1900 caratteri" }, link: { type: "string" }, titolo: { type: "string", description: "Titolo del thread Discord (solo se il canale è Forum)" }, facebook: { type: "boolean" }, discord: { type: "boolean" }, instagram: { type: "boolean", description: "Default false. Se true serve immagine_url" }, immagine_url: { type: "string", description: "Indirizzo https pubblico di un JPEG, solo per Instagram" }, conferma: { type: "boolean", description: "true solo se Dany ha approvato questo testo" }, forza: { type: "boolean", description: "Ripubblica anche se il link è già nello storico" } }, required: ["testo", "conferma"] },
   },
   {
     name: "facebook_activity",
@@ -259,11 +260,13 @@ async function callTool(name: string, args: Record<string, unknown>): Promise<un
       if (!testo || testo.length > 1900) throw new Error("Testo vuoto o oltre 1900 caratteri");
       if (/\*\*|^#{1,6}\s/m.test(testo)) throw new Error("Il testo contiene markdown (asterischi o #): toglilo");
       if (link && !/^https?:\/\//.test(link)) throw new Error("Link non valido");
-      const fb = args.facebook !== false, dc = args.discord !== false;
+      const fb = args.facebook !== false, dc = args.discord !== false, ig = args.instagram === true;
+      const immagineUrl = args.immagine_url ? String(args.immagine_url).trim() : undefined;
+      if (ig && !(immagineUrl && /^https:\/\//.test(immagineUrl))) throw new Error("Per Instagram serve immagine_url (https)");
       if (link && args.forza !== true && (await giaPubblicato(link))) throw new Error("Questo link risulta già pubblicato: usa forza=true solo se Dany lo vuole davvero.");
       if (dc && discordForum() && discordPubblicaAttivo() && !args.titolo) throw new Error("Il canale Discord è Forum: serve il titolo del thread");
-      if (!(fb && facebookAttivo()) && !(dc && discordPubblicaAttivo())) throw new Error("Nessun canale attivo tra quelli richiesti");
-      const esiti = await pubblicaOvunque({ testo, link, titolo: args.titolo ? String(args.titolo) : undefined, facebook: fb, discord: dc });
+      if (!(fb && facebookAttivo()) && !(dc && discordPubblicaAttivo()) && !(ig && instagramAttivo())) throw new Error("Nessun canale attivo tra quelli richiesti");
+      const esiti = await pubblicaOvunque({ testo, link, titolo: args.titolo ? String(args.titolo) : undefined, immagineUrl, facebook: fb, discord: dc, instagram: ig });
       return { esiti, nota: "LinkedIn è manuale: link nel primo commento." };
     }
     case "facebook_activity": {
@@ -369,7 +372,7 @@ async function handle(msg: RpcReq): Promise<object | null> {
       return ok({
         protocolVersion: (msg.params?.protocolVersion as string) ?? "2025-03-26",
         capabilities: { tools: {} },
-        serverInfo: { name: "cosmo-control", version: "1.2.0" },
+        serverInfo: { name: "cosmo-control", version: "1.3.0" },
         instructions:
           "Gestionale personale di Cosmonet.info. Usa get_article per la ricerca approfondita (testo + ricerche reali). Non modificare WordPress: proponi le modifiche a Dany. Per i social: social_history prima, social_publish solo con approvazione esplicita di Dany sul testo esatto.",
       });

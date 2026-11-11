@@ -2,9 +2,10 @@
 
 import { useRef, useState } from "react";
 
-export default function FormPubblica({ action, fb, dc, forum }: { action: (fd: FormData) => void | Promise<void>; fb: boolean; dc: boolean; forum: boolean }) {
+export default function FormPubblica({ action, fb, dc, ig, forum }: { action: (fd: FormData) => void | Promise<void>; fb: boolean; dc: boolean; ig: boolean; forum: boolean }) {
   const [facebook, setFacebook] = useState(fb);
   const [discord, setDiscord] = useState(dc);
+  const [instagram, setInstagram] = useState(false);
   const [copiato, setCopiato] = useState("");
   const testo = useRef<HTMLTextAreaElement>(null);
   const link = useRef<HTMLInputElement>(null);
@@ -23,7 +24,7 @@ export default function FormPubblica({ action, fb, dc, forum }: { action: (fd: F
     <form
       action={action}
       onSubmit={(e) => {
-        const dove = [facebook && "Facebook", discord && "Discord"].filter(Boolean).join(" e ");
+        const dove = [facebook && "Facebook", instagram && "Instagram", discord && "Discord"].filter(Boolean).join(" e ");
         if (!window.confirm(`Pubblicare ora su ${dove || "nessun canale"}?`)) e.preventDefault();
       }}
       className="space-y-4"
@@ -45,11 +46,21 @@ export default function FormPubblica({ action, fb, dc, forum }: { action: (fd: F
         <label className={`flex items-center gap-2 ${fb ? "" : "opacity-50"}`}>
           <input type="checkbox" name="facebook" checked={facebook} disabled={!fb} onChange={(e) => setFacebook(e.target.checked)} /> Facebook {fb ? "" : "(non collegato)"}
         </label>
+        <label className={`flex items-center gap-2 ${ig ? "" : "opacity-50"}`}>
+          <input type="checkbox" name="instagram" checked={instagram} disabled={!ig} onChange={(e) => setInstagram(e.target.checked)} /> Instagram {ig ? "" : "(non collegato)"}
+        </label>
         <label className={`flex items-center gap-2 ${dc ? "" : "opacity-50"}`}>
           <input type="checkbox" name="discord" checked={discord} disabled={!dc} onChange={(e) => setDiscord(e.target.checked)} /> Discord {dc ? "" : "(manca il webhook)"}
         </label>
         <p className="text-xs text-muted">LinkedIn si fa a mano: usa i pulsanti qui sotto per copiare testo e link.</p>
       </fieldset>
+      {instagram && (
+        <label className="block text-sm font-medium">
+          Indirizzo dell&apos;immagine per Instagram (https, JPEG)
+          <input name="immagine_url" type="url" placeholder="https://www.cosmonet.info/wp-content/uploads/..." className="mt-1 w-full rounded-md border border-line bg-surface p-2.5 text-sm font-normal" />
+          <span className="mt-1 block text-xs font-normal text-muted">Instagram scarica l&apos;immagine da qui: usa la copertina dell&apos;articolo. Il link nel testo su Instagram non è cliccabile, quindi non viene aggiunto.</span>
+        </label>
+      )}
       {discord && forum && (
         <label className="block text-sm font-medium">
           Titolo del thread su Discord

@@ -1,5 +1,6 @@
 import { discordForum, discordPubblicaAttivo } from "@/lib/discord";
 import { facebookAttivo } from "@/lib/facebook";
+import { instagramAttivo } from "@/lib/instagram";
 import { storicoSocial } from "@/lib/social";
 import { Badge, Card, PageHeader } from "@/components/ui";
 import FormPubblica from "./FormPubblica";
@@ -14,22 +15,24 @@ const messaggi: Record<string, { tono: "ok" | "warn"; testo: string }> = {
   titolo: { tono: "warn", testo: "Per Discord serve il titolo del thread." },
   link: { tono: "warn", testo: "Il link deve iniziare con https://" },
   immagine: { tono: "warn", testo: "L'immagine deve essere JPG, PNG, WebP o GIF e pesare al massimo 4 MB." },
+  igimg: { tono: "warn", testo: "Per Instagram serve l'indirizzo dell'immagine, che deve iniziare con https://" },
   duplicato: { tono: "warn", testo: "Questo link risulta già pubblicato. Se vuoi ripubblicarlo, spunta \"Pubblica comunque\"." },
 };
 
-const nomeCanale = (c: string) => (c === "facebook" ? "Facebook" : c === "discord" ? "Discord" : c);
+const nomeCanale = (c: string) => (c === "facebook" ? "Facebook" : c === "discord" ? "Discord" : c === "instagram" ? "Instagram" : c);
 const prima = (t: string) => (t.split("\n").find((r) => r.trim()) ?? "").slice(0, 90);
 
 export default async function Pubblica({ searchParams }: { searchParams: { esito?: string; ok?: string; msg?: string } }) {
   const fb = facebookAttivo();
   const dc = discordPubblicaAttivo();
+  const ig = instagramAttivo();
   const { items, missing } = await storicoSocial();
   const esito = searchParams.esito;
   const m = esito && messaggi[esito];
 
   return (
     <>
-      <PageHeader title="Pubblica" subtitle="Un solo testo su Facebook e Discord, con lo storico di quello che hai già pubblicato" />
+      <PageHeader title="Pubblica" subtitle="Un solo testo su Facebook, Instagram e Discord, con lo storico di quello che hai già pubblicato" />
 
       {m && (
         <div className="mb-6">
@@ -42,12 +45,12 @@ export default async function Pubblica({ searchParams }: { searchParams: { esito
           Problema: {searchParams.msg}
         </Card>
       )}
-      {!fb && !dc && (
+      {!fb && !dc && !ig && (
         <Card className="mb-6">Nessun canale collegato: servono le variabili di Facebook e/o Discord su Vercel (vedi le pagine Facebook e Discord).</Card>
       )}
 
       <Card>
-        <FormPubblica action={pubblica} fb={fb} dc={dc} forum={discordForum()} />
+        <FormPubblica action={pubblica} fb={fb} dc={dc} ig={ig} forum={discordForum()} />
       </Card>
 
       <h2 className="mb-3 mt-8 text-base font-semibold">Storico</h2>
