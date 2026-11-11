@@ -5,6 +5,7 @@ import { getGscDaily, getGscStats, normUrl, opportunity } from "@/lib/gsc";
 import { LineChart } from "@/components/LineChart";
 import { daysSinceTouched, fasciaPerGiorni, isToReview, reviewDays } from "@/lib/review";
 import { Badge, Card, DemoBanner, Kpi, PageHeader } from "@/components/ui";
+import { CopyButton } from "@/components/CopyButton";
 
 export const dynamic = "force-dynamic";
 
@@ -104,7 +105,10 @@ export default async function Panoramica() {
                       {pot(a) > 0 && ` · potenziale ${pot(a).toLocaleString("it-IT")}`}
                     </div>
                   </div>
-                  <Badge tone={fasciaPerGiorni(daysSinceTouched(a)).tone}>{daysSinceTouched(a)} giorni · {fasciaPerGiorni(daysSinceTouched(a)).label}</Badge>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <CopyButton text={a.url} label="🔗 Copia link" />
+                    <Badge tone={fasciaPerGiorni(daysSinceTouched(a)).tone}>{daysSinceTouched(a)} giorni · {fasciaPerGiorni(daysSinceTouched(a)).label}</Badge>
+                  </div>
                 </li>
               ))}
             </ul>

@@ -7,6 +7,7 @@ import { getGscStats, normUrl, opportunity } from "@/lib/gsc";
 import { daysSince, daysSinceTouched, fasciaPerGiorni, isToReview, reviewDays } from "@/lib/review";
 import { STATO_LABEL, type Stato } from "@/lib/types";
 import { Badge, Card, DemoBanner, PageHeader } from "@/components/ui";
+import { CopyButton } from "@/components/CopyButton";
 
 const FILTRI: { key: string; label: string }[] = [
   { key: "tutti", label: "Tutti" },
@@ -193,6 +194,7 @@ export default async function Sito({
                     ) : (
                       <span className="text-muted">—</span>
                     )}
+                    {isToReview(a) && <CopyButton text={a.url} label="🔗 Copia link" />}
                     {isToReview(a) && supabaseConfigured() && (
                       <form action={segnaRivisto}>
                         <input type="hidden" name="id" value={a.id} />

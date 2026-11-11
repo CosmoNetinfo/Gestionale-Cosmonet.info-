@@ -5,6 +5,7 @@ import { segnaRivisto } from "../sito/actions";
 import { getGscStats, normUrl, opportunity } from "@/lib/gsc";
 import { daysSince, daysSinceTouched, etaLeggibile, fasciaPerGiorni, isToReview, reviewDays, type Fascia } from "@/lib/review";
 import { Badge, Card, DemoBanner, Kpi, PageHeader } from "@/components/ui";
+import { CopyButton } from "@/components/CopyButton";
 
 export const dynamic = "force-dynamic";
 
@@ -230,6 +231,7 @@ export default async function Rivedere({
                   )}
                 </div>
                 <div className="flex shrink-0 flex-col gap-1.5">
+                  <CopyButton text={r.a.url} label="🔗 Copia link" />
                   <a href={`https://www.cosmonet.info/wp-admin/post.php?post=${r.a.id}&action=edit`} target="_blank" rel="noreferrer"
                     className="whitespace-nowrap rounded-md border border-line px-2.5 py-1 text-center text-xs font-medium text-muted hover:border-primary hover:text-primary">
                     Modifica ↗
