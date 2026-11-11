@@ -60,21 +60,21 @@ export default function Sidebar() {
           <circle cx="392" cy="256" r="26" fill="#fff" />
         </svg>
         <div className="leading-tight">
-          <div className="text-[15px] font-semibold text-ink">Cosmo Control</div>
-          <div className="text-xs text-muted">cosmonet.info</div>
+          <div className="text-lg font-bold text-ink">Cosmo Control</div>
+          <div className="text-sm text-muted">cosmonet.info</div>
         </div>
       </div>
 
       <button
         type="button"
         onClick={() => window.dispatchEvent(new Event("cc-open-search"))}
-        className="mx-3 mb-2 flex items-center justify-between rounded-lg border border-line px-3 py-2 text-sm text-muted hover:border-primary hover:text-primary"
+        className="mx-3 mb-2 flex items-center justify-between rounded-lg border border-line px-3 py-2 text-[15px] font-medium text-muted hover:border-primary hover:text-primary"
       >
         <span>Cerca…</span>
         <span className="text-xs">⌘K</span>
       </button>
 
-      <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 pb-2">
+      <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 pb-2">
         {pages.map((p) => {
           const active =
             p.href === "/" ? pathname === "/" : pathname.startsWith(p.href);
@@ -83,20 +83,20 @@ export default function Sidebar() {
               key={p.href}
               href={p.href}
               className={
-                "flex items-center gap-3 rounded-lg px-3 py-1.5 text-[13px] font-medium transition-colors " +
+                "flex items-center gap-3 rounded-lg px-3 py-2 text-[16px] font-semibold transition-colors " +
                 (active
-                  ? "bg-primary-soft text-primary-dark"
-                  : "text-muted hover:bg-canvas hover:text-ink")
+                  ? "bg-primary text-white"
+                  : "text-ink hover:bg-primary-soft hover:text-primary-dark")
               }
             >
-              <span className="w-4 text-center text-base">{p.icon}</span>
+              <span className="w-7 text-center text-xl">{p.icon}</span>
               {p.label}
             </Link>
           );
         })}
       </nav>
 
-      <div className="border-t border-line px-6 py-3 text-xs text-muted">
+      <div className="border-t border-line px-6 py-3 text-sm text-muted">
         Uso personale
       </div>
     </aside>

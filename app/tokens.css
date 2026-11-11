@@ -6,9 +6,9 @@
 :root {
   --canvas: #f4f7fa;
   --surface: #ffffff;
-  --line: #dde5ec;
-  --ink: #1f2d3a;
-  --muted: #6b7c8c;
+  --line: #c9d4de;
+  --ink: #121c26;
+  --muted: #43525f;
 
   --primary: #1f6fb2;
   --primary-dark: #174f80;
@@ -17,11 +17,11 @@
 
   --ok: #2e9e6b;
   --ok-soft: #e5f5ec;
-  --warn: #b78100;
+  --warn: #8a6100;
   --warn-soft: #fbf1d6;
   --danger: #d64545;
   --danger-soft: #fbe8e8;
 
   --radius: 10px;
-  --sidebar-width: 248px;
+  --sidebar-width: 288px;
 }

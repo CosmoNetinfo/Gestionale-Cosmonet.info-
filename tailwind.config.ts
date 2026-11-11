@@ -7,6 +7,10 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontSize: {
+        xs: ["0.8125rem", "1.15rem"],
+        sm: ["0.9375rem", "1.4rem"],
+      },
       colors: {
         canvas: "var(--canvas)",
         surface: "var(--surface)",

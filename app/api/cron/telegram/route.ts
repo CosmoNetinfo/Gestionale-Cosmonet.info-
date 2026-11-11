@@ -5,6 +5,9 @@ import { runDiagnostics } from "@/lib/diagnostics";
 import { getComparison, getGscDaily, gscEndDate, gscRows, isoDate, normUrl } from "@/lib/gsc";
 import { daysSince, isToReview } from "@/lib/review";
 import { facebookAttivo, facebookStato } from "@/lib/facebook";
+import { instagramAttivo, instagramStato } from "@/lib/instagram";
+import { statoDb, elencoImmagini } from "@/lib/archivio";
+import { storicoSocial } from "@/lib/social";
 import { esc, sendTelegram, telegramConfigured } from "@/lib/telegram";
 
 export const dynamic = "force-dynamic";
@@ -142,6 +145,33 @@ export async function GET(req: NextRequest) {
       const text = ["⚠️ <b>Facebook: il collegamento non funziona</b>", esc(fb.errore ?? ""), "Rifai il login dal Graph API Explorer e aggiorna FACEBOOK_PAGE_TOKEN su Vercel."].join("\n");
       const r = await sendTelegram(text);
       (r.ok ? sent : errors).push(r.ok ? "facebook" : r.message);
+    }
+  }
+  if (force !== "weekly" && force !== "anomalie") {
+    const righe: string[] = [];
+    try {
+      if (instagramAttivo()) {
+        const ig = await instagramStato();
+        if (!ig.ok) righe.push(`• Instagram: collegamento non funziona (${esc(ig.errore ?? "")}). Rigenera INSTAGRAM_TOKEN su Vercel.`);
+      }
+      const db = await statoDb();
+      const lim = (Number(process.env.DB_LIMITE_MB) > 0 ? Number(process.env.DB_LIMITE_MB) : 500) * 1024 * 1024;
+      if (db.stato) {
+        const uso = (db.stato.dbBytes + db.stato.storageBytes) / lim;
+        if (uso >= 0.8) righe.push(`• Spazio Supabase al ${Math.round(uso * 100)}%: apri Archivio e pulisci.`);
+      }
+      const img = await elencoImmagini();
+      const vecchie = img.file.filter((f) => f.creato && Date.now() - new Date(f.creato).getTime() > 36 * 3600000);
+      if (vecchie.length) righe.push(`• ${vecchie.length} immagini temporanee ferme da oltre 36 ore: eliminale da Archivio.`);
+      const st = await storicoSocial(20);
+      const falliti = st.items.filter((p) => Date.now() - new Date(p.created_at).getTime() < 86400000 && p.canali.some((c) => !c.ok));
+      for (const p of falliti.slice(0, 3)) righe.push(`• Post social con errore (${esc(p.canali.filter((c) => !c.ok).map((c) => c.canale).join(", "))}): ${esc(p.testo.slice(0, 60))}…`);
+    } catch (e) {
+      errors.push("controlli extra: " + (e as Error).message);
+    }
+    if (righe.length) {
+      const r = await sendTelegram(["⚠️ <b>Cosmo Control: da controllare</b>", ...righe].join("\n"));
+      (r.ok ? sent : errors).push(r.ok ? "extra" : r.message);
     }
   }
   return NextResponse.json({ ok: errors.length === 0, inviati: sent, errori: errors });
