@@ -27,3 +27,31 @@ export function daysSinceTouched(a: Article): number {
 export function isToReview(a: Article): boolean {
   return a.status === "publish" && daysSinceTouched(a) > reviewDays();
 }
+
+export type Fascia = "controllare" | "urgente" | "critico";
+
+export interface FasciaInfo {
+  key: Fascia;
+  label: string;
+  tone: "warn" | "danger";
+  /** Colore del bordo/barra (variabili del tema). */
+  color: string;
+}
+
+/** Fascia di urgenza in base ai giorni: da soglia a 2×, da 2× a 4×, oltre 4× (con soglia 90: 90/180/360). */
+export function fasciaPerGiorni(giorni: number): FasciaInfo {
+  const soglia = reviewDays();
+  if (giorni > soglia * 4) return { key: "critico", label: "Critico", tone: "danger", color: "var(--danger)" };
+  if (giorni > soglia * 2) return { key: "urgente", label: "Urgente", tone: "danger", color: "var(--warn)" };
+  return { key: "controllare", label: "Da controllare", tone: "warn", color: "var(--warn)" };
+}
+
+/** Testo leggibile per i giorni: "412 giorni (1 anno e 1 mese)". */
+export function etaLeggibile(giorni: number): string {
+  if (giorni < 60) return `${giorni} giorni`;
+  const mesi = Math.floor(giorni / 30.4);
+  if (mesi < 12) return `${giorni} giorni (${mesi} mesi)`;
+  const anni = Math.floor(mesi / 12);
+  const resto = mesi % 12;
+  return `${giorni} giorni (${anni} ${anni === 1 ? "anno" : "anni"}${resto ? ` e ${resto} ${resto === 1 ? "mese" : "mesi"}` : ""})`;
+}

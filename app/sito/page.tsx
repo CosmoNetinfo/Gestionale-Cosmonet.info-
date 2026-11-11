@@ -4,7 +4,7 @@ import { loadArticles } from "@/lib/articles";
 import { supabaseConfigured } from "@/lib/supabase";
 import { segnaRivisto } from "./actions";
 import { getGscStats, normUrl, opportunity } from "@/lib/gsc";
-import { daysSince, daysSinceTouched, isToReview, reviewDays } from "@/lib/review";
+import { daysSince, daysSinceTouched, fasciaPerGiorni, isToReview, reviewDays } from "@/lib/review";
 import { STATO_LABEL, type Stato } from "@/lib/types";
 import { Badge, Card, DemoBanner, PageHeader } from "@/components/ui";
 
@@ -187,7 +187,7 @@ export default async function Sito({
                 <td className="px-2 py-3">
                   <div className="flex items-center gap-2">
                     {isToReview(a) ? (
-                      <Badge tone="warn">Da rivedere · {daysSinceTouched(a)} g</Badge>
+                      <Badge tone={fasciaPerGiorni(daysSinceTouched(a)).tone}>{fasciaPerGiorni(daysSinceTouched(a)).label} · {daysSinceTouched(a)} g</Badge>
                     ) : a.reviewedAt ? (
                       <Badge tone="ok">Rivisto il {new Date(a.reviewedAt).toLocaleDateString("it-IT")}</Badge>
                     ) : (

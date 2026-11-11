@@ -3,7 +3,7 @@ import { loadArticles } from "@/lib/articles";
 import { getRepos } from "@/lib/github";
 import { getGscDaily, getGscStats, normUrl, opportunity } from "@/lib/gsc";
 import { LineChart } from "@/components/LineChart";
-import { daysSinceTouched, isToReview, reviewDays } from "@/lib/review";
+import { daysSinceTouched, fasciaPerGiorni, isToReview, reviewDays } from "@/lib/review";
 import { Badge, Card, DemoBanner, Kpi, PageHeader } from "@/components/ui";
 import { RefreshButton } from "@/components/RefreshButton";
 
@@ -82,7 +82,10 @@ export default async function Panoramica() {
 
       <div className="mt-5 grid grid-cols-3 gap-5">
         <Card className="col-span-2">
-          <h2 className="mb-4 text-base font-semibold">Richiede attenzione</h2>
+          <div className="mb-4 flex items-baseline justify-between">
+            <h2 className="text-base font-semibold">Richiede attenzione</h2>
+            <Link href="/rivedere" className="text-xs font-medium text-primary hover:underline">Vedi tutti ({toReview.length}) →</Link>
+          </div>
           {toReview.length === 0 ? (
             <p className="text-sm text-muted">Nessun articolo da rivedere.</p>
           ) : (
@@ -103,7 +106,7 @@ export default async function Panoramica() {
                       {pot(a) > 0 && ` · potenziale ${pot(a).toLocaleString("it-IT")}`}
                     </div>
                   </div>
-                  <Badge tone="warn">{daysSinceTouched(a)} giorni</Badge>
+                  <Badge tone={fasciaPerGiorni(daysSinceTouched(a)).tone}>{daysSinceTouched(a)} giorni · {fasciaPerGiorni(daysSinceTouched(a)).label}</Badge>
                 </li>
               ))}
             </ul>

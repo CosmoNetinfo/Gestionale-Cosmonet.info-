@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const pages = [
   { href: "/", label: "Panoramica", icon: "◧" },
   { href: "/sito", label: "Sito", icon: "▤" },
+  { href: "/rivedere", label: "Da rivedere", icon: "⚠" },
   { href: "/repository", label: "Repository", icon: "⌥" },
   { href: "/grafici", label: "Grafici", icon: "▥" },
   { href: "/avvisi", label: "Avvisi", icon: "⚑" },
