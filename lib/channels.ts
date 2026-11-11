@@ -1,7 +1,7 @@
 /**
  * Canali della community. Si mostra solo ciò che si può misurare in modo ufficiale.
  *  - Discord: invito pubblico (DISCORD_INVITE, solo il codice) → iscritti e online, senza token.
- *  - Telegram: bot nel canale/gruppo (TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID) → numero di iscritti.
+ *  - Telegram: bot + TELEGRAM_COMMUNITY_CHAT_ID (gruppo della community, non la chat privata degli avvisi) → numero di iscritti.
  *  - WhatsApp, social: non hanno un'API gratuita per questi dati, quindi non vengono simulati.
  */
 export interface ChannelInfo {
@@ -45,13 +45,14 @@ async function discord(): Promise<ChannelInfo> {
 
 async function telegram(): Promise<ChannelInfo> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
-  const chat = process.env.TELEGRAM_CHAT_ID;
+  // TELEGRAM_CHAT_ID è la chat privata degli avvisi (2 persone): per gli iscritti serve la community.
+  const chat = process.env.TELEGRAM_COMMUNITY_CHAT_ID;
   if (!token || !chat) {
     return {
       key: "telegram",
       nome: "Telegram",
       stato: "non-collegato",
-      dettaglio: "Mancano TELEGRAM_BOT_TOKEN e TELEGRAM_CHAT_ID (il bot deve essere dentro il gruppo o canale).",
+      dettaglio: "Manca TELEGRAM_COMMUNITY_CHAT_ID: il @nome (o l'ID) del gruppo/canale della community. TELEGRAM_CHAT_ID è la chat privata degli avvisi e non va usato qui.",
     };
   }
   try {
