@@ -5,7 +5,6 @@ import { getGscDaily, getGscStats, normUrl, opportunity } from "@/lib/gsc";
 import { LineChart } from "@/components/LineChart";
 import { daysSinceTouched, fasciaPerGiorni, isToReview, reviewDays } from "@/lib/review";
 import { Badge, Card, DemoBanner, Kpi, PageHeader } from "@/components/ui";
-import { RefreshButton } from "@/components/RefreshButton";
 
 export const dynamic = "force-dynamic";
 
@@ -36,7 +35,6 @@ export default async function Panoramica() {
         subtitle="Il quadro generale di Cosmonet.info"
         right={
           <div className="flex items-center gap-2">
-            <RefreshButton />
             {toReview.length > 0 && (
               <Link href="/prossimo" className="rounded-lg border border-line px-3 py-2 text-sm font-medium text-muted hover:border-primary hover:text-primary">
                 Prossimo da rivedere →

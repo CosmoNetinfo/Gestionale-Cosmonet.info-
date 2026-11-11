@@ -5,7 +5,6 @@ import { segnaRivisto } from "../sito/actions";
 import { getGscStats, normUrl, opportunity } from "@/lib/gsc";
 import { daysSince, daysSinceTouched, etaLeggibile, fasciaPerGiorni, isToReview, reviewDays, type Fascia } from "@/lib/review";
 import { Badge, Card, DemoBanner, Kpi, PageHeader } from "@/components/ui";
-import { RefreshButton } from "@/components/RefreshButton";
 
 export const dynamic = "force-dynamic";
 
@@ -105,7 +104,6 @@ export default async function Rivedere({
       <PageHeader
         title="Da rivedere"
         subtitle={`Articoli pubblicati non toccati da più di ${soglia} giorni, in ordine di priorità`}
-        right={<RefreshButton />}
       />
 
       {demo && note && <DemoBanner reason={note} />}

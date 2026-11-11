@@ -3,39 +3,70 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const pages = [
-  { href: "/", label: "Panoramica", icon: "◧" },
-  { href: "/sito", label: "Sito", icon: "▤" },
-  { href: "/rivedere", label: "Da rivedere", icon: "⚠" },
-  { href: "/repository", label: "Repository", icon: "⌥" },
-  { href: "/grafici", label: "Grafici", icon: "▥" },
-  { href: "/avvisi", label: "Avvisi", icon: "⚑" },
-  { href: "/da-scrivere", label: "Da scrivere", icon: "✐" },
-  { href: "/agenda", label: "Agenda", icon: "☑" },
-  { href: "/pubblica", label: "Pubblica", icon: "➤" },
-  { href: "/facebook", label: "Facebook", icon: "f" },
-  { href: "/facebook/attivita", label: "Commenti FB", icon: "💬" },
-  { href: "/discord", label: "Discord", icon: "d" },
-  { href: "/opportunita", label: "Opportunità", icon: "◆" },
-  { href: "/report", label: "Report", icon: "☑" },
-  { href: "/ricerche", label: "Ricerche", icon: "⌕" },
-  { href: "/segmenti", label: "Segmenti", icon: "◐" },
-  { href: "/impatto", label: "Impatto revisioni", icon: "↗" },
-  { href: "/salute", label: "Salute del sito", icon: "✚" },
-  { href: "/link", label: "Link e immagini", icon: "⛓" },
-  { href: "/archivio", label: "Archivio", icon: "▣" },
-  { href: "/stato", label: "Stato servizi", icon: "●" },
-  { href: "/debug", label: "Debug", icon: "✱" },
-  { href: "/indicizzazione", label: "Indicizzazione", icon: "◎" },
-  { href: "/coda", label: "Coda", icon: "☷" },
-  { href: "/velocita", label: "Velocità", icon: "⚡" },
-  { href: "/memo", label: "Cosmo Memo", icon: "✎" },
-  { href: "/canali", label: "Canali", icon: "☰" },
-  { href: "/impostazioni", label: "Impostazioni", icon: "⚙" },
+const sezioni: { titolo: string; voci: { href: string; label: string; icon: string }[] }[] = [
+  {
+    titolo: "Ogni giorno",
+    voci: [
+      { href: "/", label: "Panoramica", icon: "◧" },
+      { href: "/rivedere", label: "Da rivedere", icon: "⚠" },
+      { href: "/da-scrivere", label: "Da scrivere", icon: "✐" },
+      { href: "/agenda", label: "Agenda", icon: "☑" },
+      { href: "/coda", label: "Coda", icon: "☷" },
+      { href: "/pubblica", label: "Pubblica", icon: "➤" },
+    ],
+  },
+  {
+    titolo: "Articoli",
+    voci: [
+      { href: "/sito", label: "Sito", icon: "▤" },
+      { href: "/opportunita", label: "Opportunità", icon: "◆" },
+      { href: "/salute", label: "Salute del sito", icon: "✚" },
+      { href: "/link", label: "Link e immagini", icon: "⛓" },
+      { href: "/indicizzazione", label: "Indicizzazione", icon: "◎" },
+      { href: "/velocita", label: "Velocità", icon: "⚡" },
+    ],
+  },
+  {
+    titolo: "Statistiche",
+    voci: [
+      { href: "/grafici", label: "Grafici", icon: "▥" },
+      { href: "/report", label: "Report", icon: "☑" },
+      { href: "/avvisi", label: "Avvisi", icon: "⚑" },
+      { href: "/ricerche", label: "Ricerche", icon: "⌕" },
+      { href: "/segmenti", label: "Segmenti", icon: "◐" },
+      { href: "/impatto", label: "Impatto revisioni", icon: "↗" },
+    ],
+  },
+  {
+    titolo: "Social e community",
+    voci: [
+      { href: "/facebook", label: "Facebook", icon: "f" },
+      { href: "/facebook/attivita", label: "Commenti FB", icon: "💬" },
+      { href: "/discord", label: "Discord", icon: "d" },
+      { href: "/canali", label: "Canali", icon: "☰" },
+    ],
+  },
+  {
+    titolo: "Strumenti",
+    voci: [
+      { href: "/repository", label: "Repository", icon: "⌥" },
+      { href: "/memo", label: "Cosmo Memo", icon: "✎" },
+      { href: "/archivio", label: "Archivio", icon: "▣" },
+      { href: "/stato", label: "Stato servizi", icon: "●" },
+      { href: "/debug", label: "Debug", icon: "✱" },
+      { href: "/impostazioni", label: "Impostazioni", icon: "⚙" },
+    ],
+  },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
+  // Voce attiva = quella con il percorso più lungo che corrisponde (così «Facebook» non resta acceso su «Commenti FB»)
+  const tutte = sezioni.flatMap((s) => s.voci.map((v) => v.href));
+  const attiva =
+    tutte
+      .filter((h) => (h === "/" ? pathname === "/" : pathname === h || pathname.startsWith(h + "/")))
+      .sort((x, y) => y.length - x.length)[0] ?? "";
 
   return (
     <aside
@@ -76,25 +107,32 @@ export default function Sidebar() {
       </button>
 
       <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 pb-2">
-        {pages.map((p) => {
-          const active =
-            p.href === "/" ? pathname === "/" : pathname.startsWith(p.href);
-          return (
-            <Link
-              key={p.href}
-              href={p.href}
-              className={
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-[16px] font-semibold transition-colors " +
-                (active
-                  ? "bg-primary text-white"
-                  : "text-ink hover:bg-primary-soft hover:text-primary-dark")
-              }
-            >
-              <span className="w-7 text-center text-xl">{p.icon}</span>
-              {p.label}
-            </Link>
-          );
-        })}
+        {sezioni.map((sez) => (
+          <div key={sez.titolo} className="mb-1">
+            <div className="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wider text-muted">
+              {sez.titolo}
+            </div>
+            {sez.voci.map((p) => {
+              const active = p.href === attiva;
+              return (
+                <Link
+                  key={p.href}
+                  href={p.href}
+                  aria-current={active ? "page" : undefined}
+                  className={
+                    "flex items-center gap-3 rounded-lg px-3 py-2 text-[16px] font-semibold transition-colors " +
+                    (active
+                      ? "bg-primary text-white"
+                      : "text-ink hover:bg-primary-soft hover:text-primary-dark")
+                  }
+                >
+                  <span className="w-7 text-center text-xl">{p.icon}</span>
+                  {p.label}
+                </Link>
+              );
+            })}
+          </div>
+        ))}
       </nav>
 
       <div className="border-t border-line px-6 py-3 text-sm text-muted">
