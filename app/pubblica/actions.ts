@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { discordForum } from "@/lib/discord";
 import { giaPubblicato, pubblicaOvunque } from "@/lib/social";
-import { caricaImmagine } from "@/lib/storage";
+import { cancellaImmagine, caricaImmagine, pulisciVecchie } from "@/lib/storage";
 
 export async function pubblica(fd: FormData) {
   const testo = String(fd.get("testo") ?? "").trim();
@@ -13,6 +13,7 @@ export async function pubblica(fd: FormData) {
   const discord = fd.get("discord") === "on";
   const instagram = fd.get("instagram") === "on";
   let immagineUrl = String(fd.get("immagine_url") ?? "").trim();
+  let caricata: string | undefined; // immagine messa da noi su Supabase: va cancellata a fine lavoro
   const forza = fd.get("forza") === "on";
   if (!testo) redirect("/pubblica?esito=vuoto");
   if (!facebook && !discord && !instagram) redirect("/pubblica?esito=canali");
@@ -29,10 +30,14 @@ export async function pubblica(fd: FormData) {
     const up = await caricaImmagine(immagine!);
     if (!up.ok) redirect(`/pubblica?esito=errore&msg=${encodeURIComponent((up.errore ?? "").slice(0, 250))}`);
     immagineUrl = up.url!;
+    caricata = up.url;
+    await pulisciVecchie();
   }
   if (instagram && !/^https:\/\//i.test(immagineUrl)) redirect("/pubblica?esito=igimg");
 
   const esiti = await pubblicaOvunque({ testo, link: link || undefined, titolo, immagine, immagineUrl: immagineUrl || undefined, facebook, discord, instagram });
+  // Instagram ha già la sua copia: la nostra non serve più.
+  if (caricata) await cancellaImmagine(caricata);
   const ok = esiti.filter((e) => e.ok).map((e) => e.canale).join(",");
   const ko = esiti.filter((e) => !e.ok).map((e) => `${e.canale}: ${e.errore ?? "errore"}`).join(" | ");
   if (!esiti.length) redirect("/pubblica?esito=canali");

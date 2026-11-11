@@ -48,3 +48,47 @@ export async function caricaImmagine(file: File): Promise<{ ok: boolean; url?: s
     return { ok: false, errore: (e as Error).message };
   }
 }
+
+/** Cancella un'immagine caricata da caricaImmagine (dato il suo indirizzo pubblico). */
+export async function cancellaImmagine(url: string): Promise<void> {
+  const c = conf();
+  if (!c) return;
+  const prefisso = `${c.url}/storage/v1/object/public/${BUCKET}/`;
+  if (!url.startsWith(prefisso)) return;
+  const nome = url.slice(prefisso.length);
+  try {
+    await fetch(`${c.url}/storage/v1/object/${BUCKET}/${nome}`, {
+      method: "DELETE",
+      headers: { apikey: c.key, Authorization: `Bearer ${c.key}` },
+      cache: "no-store",
+      signal: AbortSignal.timeout(10000),
+    });
+  } catch {}
+}
+
+/** Rete di sicurezza: toglie le immagini rimaste per più di un giorno (per esempio se un post è andato in errore a metà). */
+export async function pulisciVecchie(): Promise<void> {
+  const c = conf();
+  if (!c) return;
+  try {
+    const r = await fetch(`${c.url}/storage/v1/object/list/${BUCKET}`, {
+      method: "POST",
+      headers: { apikey: c.key, Authorization: `Bearer ${c.key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ prefix: "", limit: 100, sortBy: { column: "created_at", order: "asc" } }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!r.ok) return;
+    const lista = (await r.json()) as { name: string; created_at?: string }[];
+    const limite = Date.now() - 24 * 3600 * 1000;
+    const vecchie = lista.filter((f) => f.created_at && new Date(f.created_at).getTime() < limite).map((f) => f.name);
+    if (!vecchie.length) return;
+    await fetch(`${c.url}/storage/v1/object/${BUCKET}`, {
+      method: "DELETE",
+      headers: { apikey: c.key, Authorization: `Bearer ${c.key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ prefixes: vecchie }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(10000),
+    });
+  } catch {}
+}
