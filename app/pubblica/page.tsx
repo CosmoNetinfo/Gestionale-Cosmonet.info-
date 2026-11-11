@@ -1,8 +1,8 @@
 import { discordForum, discordPubblicaAttivo } from "@/lib/discord";
 import { facebookAttivo } from "@/lib/facebook";
-import { instagramAttivo } from "@/lib/instagram";
+import { instagramAttivo, instagramStato } from "@/lib/instagram";
 import { storicoSocial } from "@/lib/social";
-import { Badge, Card, PageHeader } from "@/components/ui";
+import { Badge, Card, Kpi, PageHeader } from "@/components/ui";
 import FormPubblica from "./FormPubblica";
 import { pubblica } from "./actions";
 
@@ -26,7 +26,7 @@ export default async function Pubblica({ searchParams }: { searchParams: { esito
   const fb = facebookAttivo();
   const dc = discordPubblicaAttivo();
   const ig = instagramAttivo();
-  const { items, missing } = await storicoSocial();
+  const [{ items, missing }, igs] = await Promise.all([storicoSocial(), ig ? instagramStato() : Promise.resolve(null)]);
   const esito = searchParams.esito;
   const m = esito && messaggi[esito];
 
@@ -34,6 +34,13 @@ export default async function Pubblica({ searchParams }: { searchParams: { esito
     <>
       <PageHeader title="Pubblica" subtitle="Un solo testo su Facebook, Instagram e Discord, con lo storico di quello che hai già pubblicato" />
 
+      {igs && (
+        <div className="mb-6 grid gap-4 sm:grid-cols-3">
+          <Kpi label="Instagram" value={igs.utente ? `@${igs.utente}` : "—"} tone={igs.ok ? "default" : "danger"} />
+          <Kpi label="Follower Instagram" value={igs.follower ?? "—"} />
+          <Kpi label="Collegamento Instagram" value={igs.ok ? "Attivo" : "Non funziona"} tone={igs.ok ? "ok" : "danger"} hint={igs.ok ? undefined : igs.errore} />
+        </div>
+      )}
       {m && (
         <div className="mb-6">
           <Badge tone={m.tono}>{m.testo}</Badge>
