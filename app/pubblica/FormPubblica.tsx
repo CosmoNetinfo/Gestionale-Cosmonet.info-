@@ -38,7 +38,7 @@ export default function FormPubblica({ action, fb, dc, ig, forum }: { action: (f
         <input ref={link} name="link" type="url" placeholder="https://www.cosmonet.info/..." className="mt-1 w-full rounded-md border border-line bg-surface p-2.5 text-sm font-normal" />
       </label>
       <label className="block text-sm font-medium">
-        Immagine per Facebook (facoltativa, max 4 MB)
+        Immagine per Facebook e Instagram (max 4 MB, JPG per Instagram)
         <input name="immagine" type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="mt-1 block w-full text-sm font-normal" />
       </label>
       <fieldset className="space-y-2 text-sm">
@@ -56,9 +56,9 @@ export default function FormPubblica({ action, fb, dc, ig, forum }: { action: (f
       </fieldset>
       {instagram && (
         <label className="block text-sm font-medium">
-          Indirizzo dell&apos;immagine per Instagram (https, JPEG)
-          <input name="immagine_url" type="url" placeholder="https://www.cosmonet.info/wp-content/uploads/..." className="mt-1 w-full rounded-md border border-line bg-surface p-2.5 text-sm font-normal" />
-          <span className="mt-1 block text-xs font-normal text-muted">Instagram scarica l&apos;immagine da qui: usa la copertina dell&apos;articolo. Il link nel testo su Instagram non è cliccabile, quindi non viene aggiunto.</span>
+          Instagram: indirizzo dell&apos;immagine (facoltativo)
+          <input name="immagine_url" type="url" placeholder="https://… (lascia vuoto per usare il file caricato sopra)" className="mt-1 w-full rounded-md border border-line bg-surface p-2.5 text-sm font-normal" />
+          <span className="mt-1 block text-xs font-normal text-muted">Instagram usa l&apos;immagine caricata sopra. Questo campo serve solo se preferisci un&apos;immagine già online. Il link nel testo su Instagram non è cliccabile, quindi non viene aggiunto.</span>
         </label>
       )}
       {discord && forum && (

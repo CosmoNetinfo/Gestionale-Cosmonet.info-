@@ -15,7 +15,8 @@ const messaggi: Record<string, { tono: "ok" | "warn"; testo: string }> = {
   titolo: { tono: "warn", testo: "Per Discord serve il titolo del thread." },
   link: { tono: "warn", testo: "Il link deve iniziare con https://" },
   immagine: { tono: "warn", testo: "L'immagine deve essere JPG, PNG, WebP o GIF e pesare al massimo 4 MB." },
-  igimg: { tono: "warn", testo: "Per Instagram serve l'indirizzo dell'immagine, che deve iniziare con https://" },
+  igimg: { tono: "warn", testo: "Per Instagram carica un'immagine JPG oppure scrivi l'indirizzo https:// di un'immagine." },
+  igtipo: { tono: "warn", testo: "Per Instagram l'immagine deve essere JPG (o PNG)." },
   duplicato: { tono: "warn", testo: "Questo link risulta già pubblicato. Se vuoi ripubblicarlo, spunta \"Pubblica comunque\"." },
 };
 
