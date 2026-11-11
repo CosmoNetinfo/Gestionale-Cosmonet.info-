@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { facebookPubblica, romaToUnix } from "@/lib/facebook";
+import { registraSocial } from "@/lib/social";
 
 export async function pubblica(fd: FormData) {
   const message = String(fd.get("message") ?? "").trim();
@@ -24,6 +25,7 @@ export async function pubblica(fd: FormData) {
   }
 
   const r = await facebookPubblica({ message, link: link || undefined, quando, immagine });
+  await registraSocial({ testo: quando ? `[programmato] ${message}` : message, link: link || undefined, canali: [{ canale: "facebook", ok: r.ok, errore: r.errore ?? null }] });
   if (r.ok) redirect(`/facebook?esito=${quando ? "programmato" : "ok"}`);
   redirect(`/facebook?esito=errore&codice=${r.codice ?? ""}&msg=${encodeURIComponent((r.errore ?? "").slice(0, 200))}`);
 }

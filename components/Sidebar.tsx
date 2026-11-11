@@ -11,6 +11,7 @@ const pages = [
   { href: "/avvisi", label: "Avvisi", icon: "⚑" },
   { href: "/da-scrivere", label: "Da scrivere", icon: "✐" },
   { href: "/agenda", label: "Agenda", icon: "☑" },
+  { href: "/pubblica", label: "Pubblica", icon: "➤" },
   { href: "/facebook", label: "Facebook", icon: "f" },
   { href: "/discord", label: "Discord", icon: "d" },
   { href: "/opportunita", label: "Opportunità", icon: "◆" },

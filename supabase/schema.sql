@@ -47,3 +47,15 @@ create table if not exists public.news_sources (
 );
 alter table public.news_sources enable row level security;
 grant all on table public.news_sources to service_role;
+
+-- Storico dei post social pubblicati da Cosmo Control (pagina "Pubblica").
+create table if not exists public.social_posts (
+  id         bigint generated always as identity primary key,
+  created_at timestamptz not null default now(),
+  testo      text not null,
+  link       text,
+  canali     jsonb not null default '[]'::jsonb -- [{ "canale": "facebook", "ok": true, "errore": null }]
+);
+alter table public.social_posts enable row level security;
+grant all on table public.social_posts to service_role;
+grant usage, select on sequence public.social_posts_id_seq to service_role;
