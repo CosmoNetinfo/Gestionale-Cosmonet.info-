@@ -88,7 +88,7 @@ export default async function Opportunita() {
               const a = art(r.page)!;
               return (
                 <tr key={r.query + r.page} className="hover:bg-canvas/60">
-                  <td className="break-words px-5 py-2.5 font-medium">{r.query}</td>
+                  <td className="!whitespace-normal break-words px-5 py-2.5 font-medium"><span className="line-clamp-2">{r.query}</span></td>
                   <td className="break-words px-5 py-2.5">
                     <Link href={`/sito/${a.id}`} className="line-clamp-1 hover:text-primary">{a.title}</Link>
                   </td>
