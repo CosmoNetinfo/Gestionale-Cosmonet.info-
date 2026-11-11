@@ -13,6 +13,7 @@ const pages = [
   { href: "/agenda", label: "Agenda", icon: "☑" },
   { href: "/pubblica", label: "Pubblica", icon: "➤" },
   { href: "/facebook", label: "Facebook", icon: "f" },
+  { href: "/facebook/attivita", label: "Commenti FB", icon: "💬" },
   { href: "/discord", label: "Discord", icon: "d" },
   { href: "/opportunita", label: "Opportunità", icon: "◆" },
   { href: "/report", label: "Report", icon: "☑" },

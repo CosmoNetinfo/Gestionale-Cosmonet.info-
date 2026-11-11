@@ -11,7 +11,7 @@ import { getNote, saveNote } from "@/lib/notes";
 import { getNews, getQueue, queueUpsert } from "@/lib/news";
 import { scanBatch } from "@/lib/linkcheck";
 import { giaPubblicato, pubblicaOvunque, storicoSocial } from "@/lib/social";
-import { facebookAttivo } from "@/lib/facebook";
+import { facebookAttivita, facebookAttivo, facebookRispondi } from "@/lib/facebook";
 import { discordForum, discordPubblicaAttivo } from "@/lib/discord";
 import { STATO_LABEL } from "@/lib/types";
 import type { Article } from "@/lib/types";
@@ -168,6 +168,16 @@ const TOOLS = [
     inputSchema: { type: "object", properties: { testo: { type: "string", description: "Testo del post, max 1900 caratteri" }, link: { type: "string" }, titolo: { type: "string", description: "Titolo del thread Discord (solo se il canale è Forum)" }, facebook: { type: "boolean" }, discord: { type: "boolean" }, conferma: { type: "boolean", description: "true solo se Dany ha approvato questo testo" }, forza: { type: "boolean", description: "Ripubblica anche se il link è già nello storico" } }, required: ["testo", "conferma"] },
   },
   {
+    name: "facebook_activity",
+    description: "Ultimi post della pagina Facebook con reazioni, commenti (gli ultimi 10 per post, con id), condivisioni e, se disponibili, copertura e visualizzazioni. Serve a leggere i commenti e preparare bozze di risposta.",
+    inputSchema: { type: "object", properties: { limite: { type: "number", description: "Quanti post (default 8, max 20)" } } },
+  },
+  {
+    name: "facebook_reply",
+    description: "Risponde a un commento sulla pagina Facebook. È pubblico: chiamalo SOLO dopo che Dany ha approvato in chat il testo esatto della risposta, e imposta conferma=true solo in quel caso. Niente asterischi né markdown.",
+    inputSchema: { type: "object", properties: { commento_id: { type: "string" }, testo: { type: "string", description: "Max 1500 caratteri" }, conferma: { type: "boolean" } }, required: ["commento_id", "testo", "conferma"] },
+  },
+  {
     name: "run_diagnostics",
     description:
       "Esegue il controllo Debug del gestionale (variabili, Supabase, Search Console, WordPress, sito, cron, MCP) e restituisce problemi e avvisi con la causa e come sistemarli. Con completo=true misura anche PageSpeed.",
@@ -255,6 +265,17 @@ async function callTool(name: string, args: Record<string, unknown>): Promise<un
       if (!(fb && facebookAttivo()) && !(dc && discordPubblicaAttivo())) throw new Error("Nessun canale attivo tra quelli richiesti");
       const esiti = await pubblicaOvunque({ testo, link, titolo: args.titolo ? String(args.titolo) : undefined, facebook: fb, discord: dc });
       return { esiti, nota: "LinkedIn è manuale: link nel primo commento." };
+    }
+    case "facebook_activity": {
+      const r = await facebookAttivita(num(args.limite, 8, 20));
+      return r.ok ? { post: r.post } : { errore: r.errore, codice: r.codice };
+    }
+    case "facebook_reply": {
+      if (args.conferma !== true) throw new Error("Risposta non autorizzata: serve conferma=true, solo dopo l'approvazione di Dany in chat.");
+      const testo = String(args.testo ?? "").trim();
+      if (!testo || testo.length > 1500) throw new Error("Testo vuoto o oltre 1500 caratteri");
+      if (/\*\*|^#{1,6}\s/m.test(testo)) throw new Error("Il testo contiene markdown (asterischi o #): toglilo");
+      return await facebookRispondi(String(args.commento_id ?? ""), testo);
     }
     case "run_diagnostics": {
       const r = await runDiagnostics({ origin: null, full: args.completo === true });
@@ -348,7 +369,7 @@ async function handle(msg: RpcReq): Promise<object | null> {
       return ok({
         protocolVersion: (msg.params?.protocolVersion as string) ?? "2025-03-26",
         capabilities: { tools: {} },
-        serverInfo: { name: "cosmo-control", version: "1.1.0" },
+        serverInfo: { name: "cosmo-control", version: "1.2.0" },
         instructions:
           "Gestionale personale di Cosmonet.info. Usa get_article per la ricerca approfondita (testo + ricerche reali). Non modificare WordPress: proponi le modifiche a Dany. Per i social: social_history prima, social_publish solo con approvazione esplicita di Dany sul testo esatto.",
       });

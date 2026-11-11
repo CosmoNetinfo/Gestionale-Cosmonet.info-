@@ -113,3 +113,100 @@ export async function facebookPubblica(p: { message: string; link?: string; quan
     return { ok: false, errore: (e as Error).message };
   }
 }
+
+// ---------- Attività: post recenti, commenti, statistiche, risposte ----------
+
+export type CommentoFb = { id: string; testo: string; autore: string; quando: string; link?: string };
+export type PostFb = {
+  id: string;
+  testo: string;
+  quando: string;
+  link?: string;
+  reazioni: number;
+  commenti: number;
+  condivisioni: number;
+  ultimiCommenti: CommentoFb[];
+  /** Persone raggiunte / visualizzazioni, se Facebook le dà (altrimenti null). */
+  copertura: number | null;
+  visualizzazioni: number | null;
+};
+
+/** Ultimi post della pagina con reazioni, commenti (gli ultimi 10) e condivisioni. */
+export async function facebookAttivita(limit = 12): Promise<{ ok: boolean; post: PostFb[]; errore?: string; codice?: number }> {
+  if (!facebookAttivo()) return { ok: false, post: [], errore: "Facebook non è configurato" };
+  const page = process.env.FACEBOOK_PAGE_ID!.trim();
+  const fields = [
+    "id",
+    "message",
+    "created_time",
+    "permalink_url",
+    "shares",
+    "reactions.limit(0).summary(total_count)",
+    "comments.limit(10).order(reverse_chronological).summary(total_count){id,message,from{name},created_time,permalink_url}",
+  ].join(",");
+  try {
+    const r = await fetch(`${BASE()}/${page}/posts?fields=${encodeURIComponent(fields)}&limit=${limit}`, { headers: auth(), cache: "no-store", signal: AbortSignal.timeout(15000) });
+    const j = (await r.json()) as {
+      data?: {
+        id: string;
+        message?: string;
+        created_time: string;
+        permalink_url?: string;
+        shares?: { count?: number };
+        reactions?: { summary?: { total_count?: number } };
+        comments?: { summary?: { total_count?: number }; data?: { id: string; message?: string; from?: { name?: string }; created_time: string; permalink_url?: string }[] };
+      }[];
+    } & GraphErrore;
+    if (!r.ok || j.error) return { ok: false, post: [], errore: j.error?.message ?? `Facebook ha risposto ${r.status}`, codice: j.error?.code };
+    const post: PostFb[] = (j.data ?? []).map((p) => ({
+      id: p.id,
+      testo: p.message ?? "(post senza testo)",
+      quando: p.created_time,
+      link: p.permalink_url,
+      reazioni: p.reactions?.summary?.total_count ?? 0,
+      commenti: p.comments?.summary?.total_count ?? 0,
+      condivisioni: p.shares?.count ?? 0,
+      ultimiCommenti: (p.comments?.data ?? []).map((c) => ({ id: c.id, testo: c.message ?? "", autore: c.from?.name ?? "Utente", quando: c.created_time, link: c.permalink_url })),
+      copertura: null,
+      visualizzazioni: null,
+    }));
+    // Statistiche: facoltative e a parte, perché Facebook cambia spesso i nomi delle metriche.
+    await Promise.all(
+      post.slice(0, 8).map(async (p) => {
+        try {
+          const ir = await fetch(`${BASE()}/${p.id}/insights?metric=post_total_media_view_unique,post_media_view`, { headers: auth(), cache: "no-store", signal: AbortSignal.timeout(8000) });
+          const ij = (await ir.json()) as { data?: { name: string; values?: { value?: number }[] }[] };
+          for (const m of ij.data ?? []) {
+            const v = m.values?.[0]?.value;
+            if (typeof v !== "number") continue;
+            if (m.name === "post_total_media_view_unique") p.copertura = v;
+            if (m.name === "post_media_view") p.visualizzazioni = v;
+          }
+        } catch {}
+      }),
+    );
+    return { ok: true, post };
+  } catch (e) {
+    return { ok: false, post: [], errore: (e as Error).message };
+  }
+}
+
+/** Risponde a un commento come pagina. Serve il permesso pages_manage_engagement. */
+export async function facebookRispondi(commentId: string, message: string): Promise<{ ok: boolean; id?: string; errore?: string; codice?: number }> {
+  if (!facebookAttivo()) return { ok: false, errore: "Facebook non è configurato" };
+  if (!/^[0-9_]+$/.test(commentId)) return { ok: false, errore: "ID commento non valido" };
+  try {
+    const r = await fetch(`${BASE()}/${commentId}/comments`, {
+      method: "POST",
+      headers: { ...auth(), "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ message }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(15000),
+    });
+    const j = (await r.json()) as { id?: string } & GraphErrore;
+    if (!r.ok || j.error) return { ok: false, errore: j.error?.message ?? `Facebook ha risposto ${r.status}`, codice: j.error?.code };
+    return { ok: true, id: j.id };
+  } catch (e) {
+    return { ok: false, errore: (e as Error).message };
+  }
+}
