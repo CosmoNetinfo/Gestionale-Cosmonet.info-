@@ -22,6 +22,7 @@ const pages = [
   { href: "/impatto", label: "Impatto revisioni", icon: "↗" },
   { href: "/salute", label: "Salute del sito", icon: "✚" },
   { href: "/link", label: "Link e immagini", icon: "⛓" },
+  { href: "/archivio", label: "Archivio", icon: "▣" },
   { href: "/stato", label: "Stato servizi", icon: "●" },
   { href: "/debug", label: "Debug", icon: "✱" },
   { href: "/indicizzazione", label: "Indicizzazione", icon: "◎" },

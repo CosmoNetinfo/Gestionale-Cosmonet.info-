@@ -59,3 +59,18 @@ create table if not exists public.social_posts (
 alter table public.social_posts enable row level security;
 grant all on table public.social_posts to service_role;
 grant usage, select on sequence public.social_posts_id_seq to service_role;
+
+-- Stato dello spazio usato (per la pagina Archivio di Cosmo Control)
+create or replace function public.cosmo_db_stato() returns json
+language sql security definer set search_path = public, storage as $$
+  select json_build_object(
+    'db_bytes', pg_database_size(current_database()),
+    'storage_bytes', coalesce((select sum((metadata->>'size')::bigint) from storage.objects), 0),
+    'tabelle', coalesce((
+      select json_agg(json_build_object('nome', c.relname, 'bytes', pg_total_relation_size(c.oid), 'righe', greatest(c.reltuples::bigint, 0)) order by pg_total_relation_size(c.oid) desc)
+      from pg_class c join pg_namespace n on n.oid = c.relnamespace
+      where n.nspname = 'public' and c.relkind = 'r'), '[]'::json)
+  );
+$$;
+revoke all on function public.cosmo_db_stato() from public, anon, authenticated;
+grant execute on function public.cosmo_db_stato() to service_role;
