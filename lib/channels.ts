@@ -43,16 +43,16 @@ async function discord(): Promise<ChannelInfo> {
   }
 }
 
-async function telegram(): Promise<ChannelInfo> {
+async function telegram(key: string, nome: string, envChat: string, ricorda: string): Promise<ChannelInfo> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   // TELEGRAM_CHAT_ID è la chat privata degli avvisi (2 persone): per gli iscritti serve la community.
-  const chat = process.env.TELEGRAM_COMMUNITY_CHAT_ID;
+  const chat = process.env[envChat];
   if (!token || !chat) {
     return {
-      key: "telegram",
-      nome: "Telegram",
+      key,
+      nome,
       stato: "non-collegato",
-      dettaglio: "Manca TELEGRAM_COMMUNITY_CHAT_ID: il @nome (o l'ID) del gruppo/canale della community. TELEGRAM_CHAT_ID è la chat privata degli avvisi e non va usato qui.",
+      dettaglio: `Manca ${envChat}: il @nome (o l'ID) ${ricorda}. TELEGRAM_CHAT_ID è la chat privata degli avvisi e non va usato qui.`,
     };
   }
   try {
@@ -62,26 +62,31 @@ async function telegram(): Promise<ChannelInfo> {
       fetch(`${base}/getChat?chat_id=${encodeURIComponent(chat)}`, { next: { revalidate: 600 } }),
     ]);
     const c = (await count.json()) as { ok: boolean; result?: number; description?: string };
-    if (!c.ok) return { key: "telegram", nome: "Telegram", stato: "errore", dettaglio: c.description ?? "Errore Telegram" };
+    if (!c.ok) return { key, nome, stato: "errore", dettaglio: c.description ?? "Errore Telegram" };
     const i = (await info.json()) as { ok: boolean; result?: { title?: string; username?: string } };
     return {
-      key: "telegram",
-      nome: "Telegram",
+      key,
+      nome,
       stato: "ok",
       iscritti: c.result,
-      dettaglio: i.result?.title ?? "Gruppo Telegram",
+      dettaglio: i.result?.title ?? nome,
       link: i.result?.username ? `https://t.me/${i.result.username}` : undefined,
     };
   } catch (e) {
-    return { key: "telegram", nome: "Telegram", stato: "errore", dettaglio: (e as Error).message };
+    return { key, nome, stato: "errore", dettaglio: (e as Error).message };
   }
 }
 
 export async function getChannels(): Promise<ChannelInfo[]> {
-  const [d, t] = await Promise.all([discord(), telegram()]);
+  const [d, tg, tc] = await Promise.all([
+    discord(),
+    telegram("telegram-gruppo", "Telegram — gruppo community", "TELEGRAM_COMMUNITY_CHAT_ID", "del gruppo della community"),
+    telegram("telegram-canale", "Telegram — canale", "TELEGRAM_CHANNEL_CHAT_ID", "del canale"),
+  ]);
   return [
     d,
-    t,
+    tg,
+    tc,
     {
       key: "whatsapp",
       nome: "WhatsApp",
