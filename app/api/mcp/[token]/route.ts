@@ -10,6 +10,9 @@ import { revisionImpact, segments, siteQueries } from "@/lib/insights";
 import { getNote, saveNote } from "@/lib/notes";
 import { getNews, getQueue, queueUpsert } from "@/lib/news";
 import { scanBatch } from "@/lib/linkcheck";
+import { giaPubblicato, pubblicaOvunque, storicoSocial } from "@/lib/social";
+import { facebookAttivo } from "@/lib/facebook";
+import { discordForum, discordPubblicaAttivo } from "@/lib/discord";
 import { STATO_LABEL } from "@/lib/types";
 import type { Article } from "@/lib/types";
 
@@ -155,6 +158,16 @@ const TOOLS = [
     inputSchema: { type: "object", properties: { url: { type: "string" }, titolo: { type: "string" }, stato: { type: "string" }, nota: { type: "string" } }, required: ["url", "titolo"] },
   },
   {
+    name: "social_history",
+    description: "Storico dei post social pubblicati da Cosmo Control (Facebook/Discord) con testo, link ed esito per canale. Controllalo prima di proporre o pubblicare un post, per evitare doppioni.",
+    inputSchema: { type: "object", properties: { limite: { type: "number", description: "Quanti post (default 20, max 60)" } } },
+  },
+  {
+    name: "social_publish",
+    description: "Pubblica un post su Facebook e/o Discord (LinkedIn resta manuale). ATTENZIONE: è pubblico e non annullabile da qui. Chiamalo SOLO dopo che Dany ha approvato in chat il testo esatto; imposta conferma=true solo in quel caso. Testo senza asterischi né markdown. Rifiuta un link già pubblicato salvo forza=true.",
+    inputSchema: { type: "object", properties: { testo: { type: "string", description: "Testo del post, max 1900 caratteri" }, link: { type: "string" }, titolo: { type: "string", description: "Titolo del thread Discord (solo se il canale è Forum)" }, facebook: { type: "boolean" }, discord: { type: "boolean" }, conferma: { type: "boolean", description: "true solo se Dany ha approvato questo testo" }, forza: { type: "boolean", description: "Ripubblica anche se il link è già nello storico" } }, required: ["testo", "conferma"] },
+  },
+  {
     name: "run_diagnostics",
     description:
       "Esegue il controllo Debug del gestionale (variabili, Supabase, Search Console, WordPress, sito, cron, MCP) e restituisce problemi e avvisi con la causa e come sistemarli. Con completo=true misura anche PageSpeed.",
@@ -225,6 +238,24 @@ async function callTool(name: string, args: Record<string, unknown>): Promise<un
     }
     case "scan_links":
       return scanBatch(num(args.pagina, 1, 200));
+    case "social_history": {
+      const r = await storicoSocial(num(args.limite, 20, 60));
+      return { avviso: r.missing ?? null, post: r.items };
+    }
+    case "social_publish": {
+      if (args.conferma !== true) throw new Error("Pubblicazione non autorizzata: serve conferma=true, solo dopo l'approvazione di Dany in chat.");
+      const testo = String(args.testo ?? "").trim();
+      const link = args.link ? String(args.link).trim() : undefined;
+      if (!testo || testo.length > 1900) throw new Error("Testo vuoto o oltre 1900 caratteri");
+      if (/\*\*|^#{1,6}\s/m.test(testo)) throw new Error("Il testo contiene markdown (asterischi o #): toglilo");
+      if (link && !/^https?:\/\//.test(link)) throw new Error("Link non valido");
+      const fb = args.facebook !== false, dc = args.discord !== false;
+      if (link && args.forza !== true && (await giaPubblicato(link))) throw new Error("Questo link risulta già pubblicato: usa forza=true solo se Dany lo vuole davvero.");
+      if (dc && discordForum() && discordPubblicaAttivo() && !args.titolo) throw new Error("Il canale Discord è Forum: serve il titolo del thread");
+      if (!(fb && facebookAttivo()) && !(dc && discordPubblicaAttivo())) throw new Error("Nessun canale attivo tra quelli richiesti");
+      const esiti = await pubblicaOvunque({ testo, link, titolo: args.titolo ? String(args.titolo) : undefined, facebook: fb, discord: dc });
+      return { esiti, nota: "LinkedIn è manuale: link nel primo commento." };
+    }
     case "run_diagnostics": {
       const r = await runDiagnostics({ origin: null, full: args.completo === true });
       const all = r.checks.filter((c) => c.gruppo !== "Pagine dell'app");
@@ -317,9 +348,9 @@ async function handle(msg: RpcReq): Promise<object | null> {
       return ok({
         protocolVersion: (msg.params?.protocolVersion as string) ?? "2025-03-26",
         capabilities: { tools: {} },
-        serverInfo: { name: "cosmo-control", version: "1.0.0" },
+        serverInfo: { name: "cosmo-control", version: "1.1.0" },
         instructions:
-          "Gestionale personale di Cosmonet.info. Usa get_article per la ricerca approfondita (testo + ricerche reali). Non modificare WordPress: proponi le modifiche a Dany.",
+          "Gestionale personale di Cosmonet.info. Usa get_article per la ricerca approfondita (testo + ricerche reali). Non modificare WordPress: proponi le modifiche a Dany. Per i social: social_history prima, social_publish solo con approvazione esplicita di Dany sul testo esatto.",
       });
     case "ping":
       return ok({});
