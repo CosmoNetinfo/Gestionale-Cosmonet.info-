@@ -1,4 +1,4 @@
-import { facebookAttivo, facebookStato } from "@/lib/facebook";
+import { facebookAttivo, facebookProgrammati, facebookStato } from "@/lib/facebook";
 import { Badge, Card, Kpi, PageHeader } from "@/components/ui";
 import FormPubblica from "./FormPubblica";
 import { pubblica } from "./actions";
@@ -26,6 +26,7 @@ export default async function Facebook({ searchParams }: { searchParams: { esito
     );
 
   const s = await facebookStato();
+  const prog = s.ok ? await facebookProgrammati(50) : null;
   const esito = searchParams.esito;
   const m = esito && messaggi[esito];
   const riconnetti = !s.ok && (s.codice === 190 || /token|session|expired/i.test(s.errore ?? ""));
@@ -64,6 +65,33 @@ export default async function Facebook({ searchParams }: { searchParams: { esito
       <Card>
         <FormPubblica action={pubblica} />
       </Card>
+
+      {prog && (
+        <Card className="mt-6">
+          <h2 className="mb-3 text-base font-semibold">Post programmati{prog.ok ? ` (${prog.post.length})` : ""}</h2>
+          {!prog.ok ? (
+            <p className="text-sm text-muted">Non riesco a leggere i post programmati: {prog.errore}</p>
+          ) : prog.post.length === 0 ? (
+            <p className="text-sm text-muted">Nessun post programmato.</p>
+          ) : (
+            <ul className="divide-y divide-line">
+              {prog.post.map((p) => (
+                <li key={p.id} className="flex gap-4 py-3">
+                  {p.immagine && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={p.immagine} alt="" className="h-16 w-16 shrink-0 rounded-md object-cover" />
+                  )}
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium">{p.quando}</div>
+                    <p className="mt-1 line-clamp-3 whitespace-pre-line text-sm text-muted">{p.testo}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="mt-3 text-xs text-muted">Per cambiare o cancellare un post programmato, usa Facebook (Meta Business Suite) oppure chiedi a Claude.</p>
+        </Card>
+      )}
     </>
   );
 }
