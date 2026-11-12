@@ -114,6 +114,58 @@ export async function facebookPubblica(p: { message: string; link?: string; quan
   }
 }
 
+// ---------- Post programmati ----------
+
+export type PostProgrammato = { id: string; testo: string; quando: string; immagine?: string };
+
+/** Post della pagina programmati e non ancora usciti, dal più vicino al più lontano. */
+export async function facebookProgrammati(limit = 50): Promise<{ ok: boolean; post: PostProgrammato[]; errore?: string; codice?: number }> {
+  if (!facebookAttivo()) return { ok: false, post: [], errore: "Facebook non è configurato" };
+  const page = process.env.FACEBOOK_PAGE_ID!.trim();
+  try {
+    const r = await fetch(`${BASE()}/${page}/scheduled_posts?fields=${encodeURIComponent("id,message,scheduled_publish_time,full_picture")}&limit=${limit}`, {
+      headers: auth(),
+      cache: "no-store",
+      signal: AbortSignal.timeout(15000),
+    });
+    const j = (await r.json()) as { data?: { id: string; message?: string; scheduled_publish_time?: number | string; full_picture?: string }[] } & GraphErrore;
+    if (!r.ok || j.error) return { ok: false, post: [], errore: j.error?.message ?? `Facebook ha risposto ${r.status}`, codice: j.error?.code };
+    const post = (j.data ?? [])
+      .map((p) => {
+        const unix = typeof p.scheduled_publish_time === "number" ? p.scheduled_publish_time : Date.parse(String(p.scheduled_publish_time)) / 1000;
+        return { unix, id: p.id, testo: p.message ?? "(senza testo)", immagine: p.full_picture };
+      })
+      .sort((a, b) => a.unix - b.unix)
+      .map((p) => ({
+        id: p.id,
+        testo: p.testo,
+        quando: Number.isFinite(p.unix)
+          ? new Date(p.unix * 1000).toLocaleString("it-IT", { timeZone: "Europe/Rome", dateStyle: "short", timeStyle: "short" })
+          : "orario non disponibile",
+        immagine: p.immagine,
+      }));
+    return { ok: true, post };
+  } catch (e) {
+    return { ok: false, post: [], errore: (e as Error).message };
+  }
+}
+
+/** Cancella un post programmato (non quelli già usciti). L'ID deve essere tra quelli programmati. */
+export async function facebookEliminaProgrammato(id: string): Promise<{ ok: boolean; errore?: string; codice?: number }> {
+  if (!/^[0-9_]+$/.test(id)) return { ok: false, errore: "ID post non valido" };
+  const elenco = await facebookProgrammati(100);
+  if (!elenco.ok) return { ok: false, errore: elenco.errore, codice: elenco.codice };
+  if (!elenco.post.some((p) => p.id === id)) return { ok: false, errore: "Questo post non è tra quelli programmati: non lo cancello" };
+  try {
+    const r = await fetch(`${BASE()}/${id}`, { method: "DELETE", headers: auth(), cache: "no-store", signal: AbortSignal.timeout(15000) });
+    const j = (await r.json()) as { success?: boolean } & GraphErrore;
+    if (!r.ok || j.error) return { ok: false, errore: j.error?.message ?? `Facebook ha risposto ${r.status}`, codice: j.error?.code };
+    return { ok: j.success !== false };
+  } catch (e) {
+    return { ok: false, errore: (e as Error).message };
+  }
+}
+
 // ---------- Attività: post recenti, commenti, statistiche, risposte ----------
 
 export type CommentoFb = { id: string; testo: string; autore: string; quando: string; link?: string };
