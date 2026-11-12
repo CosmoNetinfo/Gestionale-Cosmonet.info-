@@ -12,7 +12,8 @@ import { getNews, getQueue, queueUpsert } from "@/lib/news";
 import { scanBatch } from "@/lib/linkcheck";
 import { giaPubblicato, pubblicaOvunque, storicoSocial } from "@/lib/social";
 import { instagramAttivo } from "@/lib/instagram";
-import { facebookAttivita, facebookAttivo, facebookRispondi } from "@/lib/facebook";
+import { facebookAttivita, facebookAttivo, facebookEliminaProgrammato, facebookProgrammati, facebookPubblica, facebookRispondi, romaToUnix } from "@/lib/facebook";
+import { scaricaComeFile } from "@/lib/storage";
 import { discordForum, discordPubblicaAttivo } from "@/lib/discord";
 import { STATO_LABEL } from "@/lib/types";
 import type { Article } from "@/lib/types";
@@ -165,8 +166,18 @@ const TOOLS = [
   },
   {
     name: "social_publish",
-    description: "Pubblica un post su Facebook, Discord e/o Instagram (LinkedIn resta manuale). ATTENZIONE: è pubblico e non annullabile da qui. Chiamalo SOLO dopo che Dany ha approvato in chat il testo esatto; imposta conferma=true solo in quel caso. Testo senza asterischi né markdown. Rifiuta un link già pubblicato salvo forza=true.",
-    inputSchema: { type: "object", properties: { testo: { type: "string", description: "Testo del post, max 1900 caratteri" }, link: { type: "string" }, titolo: { type: "string", description: "Titolo del thread Discord (solo se il canale è Forum)" }, facebook: { type: "boolean" }, discord: { type: "boolean" }, instagram: { type: "boolean", description: "Default false. Se true serve immagine_url" }, immagine_url: { type: "string", description: "Indirizzo https pubblico di un JPEG, solo per Instagram" }, conferma: { type: "boolean", description: "true solo se Dany ha approvato questo testo" }, forza: { type: "boolean", description: "Ripubblica anche se il link è già nello storico" } }, required: ["testo", "conferma"] },
+    description: "Pubblica un post su Facebook, Discord e/o Instagram (LinkedIn resta manuale), subito oppure PROGRAMMATO su Facebook con quando. ATTENZIONE: è pubblico e non annullabile da qui (un post programmato si cancella con facebook_unschedule). Chiamalo SOLO dopo che Dany ha approvato in chat il testo esatto; imposta conferma=true solo in quel caso. Testo senza asterischi né markdown. Rifiuta un link già pubblicato salvo forza=true. Con quando il post va solo su Facebook, tra 11 minuti e 30 giorni da ora.",
+    inputSchema: { type: "object", properties: { testo: { type: "string", description: "Testo del post, max 1900 caratteri" }, link: { type: "string" }, titolo: { type: "string", description: "Titolo del thread Discord (solo se il canale è Forum)" }, facebook: { type: "boolean" }, discord: { type: "boolean" }, instagram: { type: "boolean", description: "Default false. Se true serve immagine_url" }, immagine_url: { type: "string", description: "Indirizzo https pubblico di un JPEG o PNG (max 5 MB). Serve a Instagram; per Facebook serve anche immagine_facebook=true" }, immagine_facebook: { type: "boolean", description: "Default false. Se true allega a Facebook l'immagine di immagine_url (con la foto il link finisce in fondo al testo)" }, quando: { type: "string", description: "Programmazione su Facebook, ora italiana, formato 2026-11-19T09:00. Solo Facebook: con quando, discord e instagram devono essere false o omessi" }, conferma: { type: "boolean", description: "true solo se Dany ha approvato questo testo" }, forza: { type: "boolean", description: "Ripubblica anche se il link è già nello storico" } }, required: ["testo", "conferma"] },
+  },
+  {
+    name: "facebook_scheduled",
+    description: "Elenco dei post della pagina Facebook programmati e non ancora usciti, dal più vicino al più lontano, con id, testo, data e ora italiana e immagine. Non modifica nulla.",
+    inputSchema: { type: "object", properties: { limite: { type: "number", description: "Quanti post (default 50, max 100)" } } },
+  },
+  {
+    name: "facebook_unschedule",
+    description: "Cancella un post Facebook programmato (id preso da facebook_scheduled). Non tocca i post già usciti. Chiamalo SOLO dopo che Dany ha confermato in chat quale post cancellare; conferma=true solo in quel caso.",
+    inputSchema: { type: "object", properties: { post_id: { type: "string" }, conferma: { type: "boolean" } }, required: ["post_id", "conferma"] },
   },
   {
     name: "facebook_activity",
@@ -260,14 +271,44 @@ async function callTool(name: string, args: Record<string, unknown>): Promise<un
       if (!testo || testo.length > 1900) throw new Error("Testo vuoto o oltre 1900 caratteri");
       if (/\*\*|^#{1,6}\s/m.test(testo)) throw new Error("Il testo contiene markdown (asterischi o #): toglilo");
       if (link && !/^https?:\/\//.test(link)) throw new Error("Link non valido");
-      const fb = args.facebook !== false, dc = args.discord !== false, ig = args.instagram === true;
+      const quandoTxt = args.quando ? String(args.quando).trim() : "";
+      const fb = args.facebook !== false, ig = args.instagram === true;
+      // Programmato: solo Facebook, quindi Discord non parte di default.
+      const dc = quandoTxt ? false : args.discord !== false;
       const immagineUrl = args.immagine_url ? String(args.immagine_url).trim() : undefined;
       if (ig && !(immagineUrl && /^https:\/\//.test(immagineUrl))) throw new Error("Per Instagram serve immagine_url (https)");
+      if (args.immagine_facebook === true && !immagineUrl) throw new Error("Per l'immagine su Facebook serve immagine_url");
       if (link && args.forza !== true && (await giaPubblicato(link))) throw new Error("Questo link risulta già pubblicato: usa forza=true solo se Dany lo vuole davvero.");
+      let immagine: File | undefined;
+      if (args.immagine_facebook === true && fb && immagineUrl) {
+        const img = await scaricaComeFile(immagineUrl);
+        if (!img.ok) throw new Error(img.errore ?? "Immagine non scaricabile");
+        immagine = img.file;
+      }
+      if (quandoTxt) {
+        if (args.discord === true || ig) throw new Error("Un post programmato va solo su Facebook: togli discord e instagram.");
+        if (!fb || !facebookAttivo()) throw new Error("Facebook non è attivo");
+        const unix = romaToUnix(quandoTxt);
+        if (!unix) throw new Error("Formato di quando non valido: usa 2026-11-19T09:00 (ora italiana)");
+        const tra = unix - Math.floor(Date.now() / 1000);
+        if (tra < 11 * 60) throw new Error("Facebook accetta programmazioni da almeno 10 minuti da ora: scegli un orario più avanti.");
+        if (tra > 30 * 24 * 3600) throw new Error("Facebook accetta programmazioni fino a 30 giorni da ora.");
+        const r = await facebookPubblica({ message: testo, link, quando: unix, immagine });
+        if (!r.ok) throw new Error(r.errore ?? "Programmazione fallita");
+        return { programmato: true, id: r.id, quando: quandoTxt, con_immagine: Boolean(immagine), nota: "Visibile con facebook_scheduled. Non compare nello storico finché non esce." };
+      }
       if (dc && discordForum() && discordPubblicaAttivo() && !args.titolo) throw new Error("Il canale Discord è Forum: serve il titolo del thread");
       if (!(fb && facebookAttivo()) && !(dc && discordPubblicaAttivo()) && !(ig && instagramAttivo())) throw new Error("Nessun canale attivo tra quelli richiesti");
-      const esiti = await pubblicaOvunque({ testo, link, titolo: args.titolo ? String(args.titolo) : undefined, immagineUrl, facebook: fb, discord: dc, instagram: ig });
+      const esiti = await pubblicaOvunque({ testo, link, titolo: args.titolo ? String(args.titolo) : undefined, immagine, immagineUrl, facebook: fb, discord: dc, instagram: ig });
       return { esiti, nota: "LinkedIn è manuale: link nel primo commento." };
+    }
+    case "facebook_scheduled": {
+      const r = await facebookProgrammati(num(args.limite, 50, 100));
+      return r.ok ? { totale: r.post.length, post: r.post } : { errore: r.errore, codice: r.codice };
+    }
+    case "facebook_unschedule": {
+      if (args.conferma !== true) throw new Error("Cancellazione non autorizzata: serve conferma=true, solo dopo la conferma di Dany in chat.");
+      return await facebookEliminaProgrammato(String(args.post_id ?? ""));
     }
     case "facebook_activity": {
       const r = await facebookAttivita(num(args.limite, 8, 20));
@@ -372,7 +413,7 @@ async function handle(msg: RpcReq): Promise<object | null> {
       return ok({
         protocolVersion: (msg.params?.protocolVersion as string) ?? "2025-03-26",
         capabilities: { tools: {} },
-        serverInfo: { name: "cosmo-control", version: "1.3.0" },
+        serverInfo: { name: "cosmo-control", version: "1.4.0" },
         instructions:
           "Gestionale personale di Cosmonet.info. Usa get_article per la ricerca approfondita (testo + ricerche reali). Non modificare WordPress: proponi le modifiche a Dany. Per i social: social_history prima, social_publish solo con approvazione esplicita di Dany sul testo esatto.",
       });

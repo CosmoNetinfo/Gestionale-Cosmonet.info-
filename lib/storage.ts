@@ -92,3 +92,20 @@ export async function pulisciVecchie(): Promise<void> {
     });
   } catch {}
 }
+
+/** Scarica un'immagine da un indirizzo https pubblico e la restituisce come File (JPEG o PNG, max 5 MB). */
+export async function scaricaComeFile(url: string): Promise<{ ok: boolean; file?: File; errore?: string }> {
+  if (!/^https:\/\//.test(url)) return { ok: false, errore: "L'indirizzo dell'immagine deve essere https" };
+  try {
+    const r = await fetch(url, { cache: "no-store", redirect: "follow", signal: AbortSignal.timeout(20000) });
+    if (!r.ok) return { ok: false, errore: `Immagine non raggiungibile (${r.status})` };
+    const tipo = (r.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();
+    if (tipo !== "image/jpeg" && tipo !== "image/png") return { ok: false, errore: "L'immagine deve essere JPEG o PNG" };
+    const bytes = new Uint8Array(await r.arrayBuffer());
+    if (bytes.length === 0 || bytes.length > 5 * 1024 * 1024) return { ok: false, errore: "L'immagine è vuota o supera 5 MB" };
+    const nome = `immagine.${tipo === "image/png" ? "png" : "jpg"}`;
+    return { ok: true, file: new File([bytes], nome, { type: tipo }) };
+  } catch (e) {
+    return { ok: false, errore: (e as Error).message };
+  }
+}
