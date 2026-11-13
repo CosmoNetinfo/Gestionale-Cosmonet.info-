@@ -40,21 +40,31 @@ function client() {
   });
 }
 
+/** Percorso della cartella: INBOX oppure «Posta inviata» (cercata per uso speciale o per nome). */
+async function percorso(cl: ImapFlow, inviata: boolean): Promise<string | null> {
+  if (!inviata) return "INBOX";
+  const cartelle = await cl.list();
+  const f = cartelle.find((x) => x.specialUse === "\\Sent") ?? cartelle.find((x) => /^(sent|posta inviata|inviata|inviati)/i.test(x.name));
+  return f ? f.path : null;
+}
+
 const msg = (e: unknown) => (e instanceof Error ? e.message : "Errore di connessione");
 
-export async function elencaPosta(quante = 40): Promise<{ ok: boolean; righe: MailRiga[]; totale: number; errore?: string }> {
+export async function elencaPosta(quante = 40, inviata = false): Promise<{ ok: boolean; righe: MailRiga[]; totale: number; errore?: string }> {
   if (!conf()) return { ok: false, righe: [], totale: 0, errore: "Non collegato" };
   const cl = client();
   try {
     await cl.connect();
-    const lock = await cl.getMailboxLock("INBOX", { readOnly: true });
+    const cartella = await percorso(cl, inviata);
+    if (!cartella) return { ok: false, righe: [], totale: 0, errore: "Cartella «Posta inviata» non trovata (nessuna risposta inviata da qui?)" };
+    const lock = await cl.getMailboxLock(cartella, { readOnly: true });
     try {
       const totale = (cl.mailbox && typeof cl.mailbox === "object" ? cl.mailbox.exists : 0) ?? 0;
       const righe: MailRiga[] = [];
       if (totale > 0) {
         const da = Math.max(1, totale - quante + 1);
         for await (const m of cl.fetch(`${da}:*`, { uid: true, envelope: true, flags: true })) {
-          const f = m.envelope?.from?.[0];
+          const f = inviata ? m.envelope?.to?.[0] : m.envelope?.from?.[0];
           righe.push({
             uid: m.uid,
             da: f ? (f.name ? `${f.name} <${f.address ?? ""}>` : f.address ?? "") : "",
@@ -87,12 +97,14 @@ export interface MailDettaglio {
   idMessaggio?: string;
 }
 
-export async function leggiMail(uid: number): Promise<{ ok: boolean; mail?: MailDettaglio; errore?: string }> {
+export async function leggiMail(uid: number, inviata = false): Promise<{ ok: boolean; mail?: MailDettaglio; errore?: string }> {
   if (!conf()) return { ok: false, errore: "Non collegato" };
   const cl = client();
   try {
     await cl.connect();
-    const lock = await cl.getMailboxLock("INBOX", { readOnly: true });
+    const cartella = await percorso(cl, inviata);
+    if (!cartella) return { ok: false, errore: "Cartella «Posta inviata» non trovata" };
+    const lock = await cl.getMailboxLock(cartella, { readOnly: true });
     try {
       const scarico = await cl.download(String(uid), undefined, { uid: true, maxBytes: 2_000_000 });
       if (!scarico || !scarico.content) return { ok: false, errore: "Messaggio non trovato" };

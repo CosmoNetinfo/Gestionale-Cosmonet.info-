@@ -5,13 +5,14 @@ import { Rispondi } from "@/components/Rispondi";
 
 export const dynamic = "force-dynamic";
 
-export default async function Mail({ params }: { params: { uid: string } }) {
+export default async function Mail({ params, searchParams }: { params: { uid: string }; searchParams: { c?: string } }) {
   const uid = Number(params.uid);
-  const r = postaAttiva() && Number.isInteger(uid) && uid > 0 ? await leggiMail(uid) : { ok: false, errore: "Messaggio non valido o posta non collegata" };
-  const rispondiA = r.mail ? (r.mail.rispondiA ?? "") : "";
+  const inviata = searchParams.c === "inviata";
+  const r = postaAttiva() && Number.isInteger(uid) && uid > 0 ? await leggiMail(uid, inviata) : { ok: false, errore: "Messaggio non valido o posta non collegata" };
+  const rispondiA = r.mail && !inviata ? (r.mail.rispondiA ?? "") : "";
   return (
     <>
-      <PageHeader title={r.mail?.oggetto ?? "Messaggio"} right={<Link href="/posta" className="text-sm text-primary hover:underline">← Posta</Link>} />
+      <PageHeader title={r.mail?.oggetto ?? "Messaggio"} right={<Link href={inviata ? "/posta?c=inviata" : "/posta"} className="text-sm text-primary hover:underline">← Posta</Link>} />
       {!r.ok && <Card className="border-danger/30 bg-danger-soft">Non riesco ad aprire il messaggio: {r.errore}</Card>}
       {r.mail && (
         <Card>
