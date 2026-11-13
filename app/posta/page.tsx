@@ -14,7 +14,7 @@ export default async function Posta() {
 
   return (
     <>
-      <PageHeader title="Posta" subtitle={attiva ? `Casella ${indirizzoPosta()} (sola lettura)` : "La tua casella email di Cosmonet"} />
+      <PageHeader title="Posta" subtitle={attiva ? `Casella ${indirizzoPosta()} (le risposte partono solo dopo la tua conferma)` : "La tua casella email di Cosmonet"} />
       {!attiva && (
         <Card className="border-warn/30 bg-warn-soft">
           <p className="text-sm font-medium">Da collegare.</p>

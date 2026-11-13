@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { leggiMail, postaAttiva } from "@/lib/posta";
 import { Card, PageHeader } from "@/components/ui";
+import { Rispondi } from "@/components/Rispondi";
 
 export const dynamic = "force-dynamic";
 
 export default async function Mail({ params }: { params: { uid: string } }) {
   const uid = Number(params.uid);
   const r = postaAttiva() && Number.isInteger(uid) && uid > 0 ? await leggiMail(uid) : { ok: false, errore: "Messaggio non valido o posta non collegata" };
+  const rispondiA = r.mail ? (r.mail.rispondiA ?? "") : "";
   return (
     <>
       <PageHeader title={r.mail?.oggetto ?? "Messaggio"} right={<Link href="/posta" className="text-sm text-primary hover:underline">← Posta</Link>} />
@@ -28,6 +30,7 @@ export default async function Mail({ params }: { params: { uid: string } }) {
           </div>
           <hr className="my-4 border-line" />
           <p className="whitespace-pre-wrap break-words text-sm">{r.mail.testo}</p>
+          {rispondiA && <Rispondi a={rispondiA} oggetto={r.mail.oggetto} citazione={r.mail.testo.slice(0, 3000)} inRispostaA={r.mail.idMessaggio} />}
           <p className="mt-6 text-xs text-muted">Si vede solo il testo semplice. Link e immagini del messaggio originale non vengono caricati.</p>
         </Card>
       )}

@@ -83,6 +83,8 @@ export interface MailDettaglio {
   data: string | null;
   testo: string;
   allegati: string[];
+  rispondiA?: string;
+  idMessaggio?: string;
 }
 
 export async function leggiMail(uid: number): Promise<{ ok: boolean; mail?: MailDettaglio; errore?: string }> {
@@ -106,6 +108,8 @@ export async function leggiMail(uid: number): Promise<{ ok: boolean; mail?: Mail
           oggetto: p.subject ?? "(senza oggetto)",
           data: p.date ? p.date.toISOString() : null,
           testo: testo.slice(0, 20000),
+          rispondiA: (p.replyTo?.value?.[0]?.address ?? p.from?.value?.[0]?.address ?? "").trim() || undefined,
+          idMessaggio: p.messageId ?? undefined,
           allegati: (p.attachments ?? []).map((a) => `${a.filename ?? "allegato"} (${Math.round(a.size / 1024)} KB)`),
         },
       };
