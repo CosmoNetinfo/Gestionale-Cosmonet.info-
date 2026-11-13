@@ -45,6 +45,8 @@ export default function Impostazioni() {
             <Row label="Cosmo Memo" ok={memo} hint="COSMOMEMO_URL, COSMOMEMO_READ_TOKEN" />
             <Row label="Discord" ok={dc} hint="DISCORD_INVITE" />
             <Row label="Telegram" ok={tg} hint="TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID" />
+            <Row label="Messaggi dal sito" ok={!!process.env.CONTACT_SUPABASE_URL && !!process.env.CONTACT_SUPABASE_KEY} hint="CONTACT_SUPABASE_URL, CONTACT_SUPABASE_KEY" />
+            <Row label="Posta (IMAP)" ok={!!process.env.MAIL_IMAP_HOST && !!process.env.MAIL_USER && !!process.env.MAIL_PASSWORD} hint="MAIL_IMAP_HOST, MAIL_USER, MAIL_PASSWORD" />
             <Row label="Server MCP per Claude" ok={mcp} hint="MCP_TOKEN" />
           </div>
         </Card>

@@ -151,6 +151,16 @@ const G: Record<string, Guida> = {
     cosa: "La tua memoria esterna: pagine, idee e progetti.",
     azioni: ["Apri Cosmo Memo dal pulsante in alto.", "Qui è in sola lettura."],
   },
+  "/messaggi": {
+    titolo: "Messaggi dal sito",
+    cosa: "I messaggi che i lettori inviano dal modulo Contatti del sito.",
+    azioni: ["Leggi i nuovi messaggi.", "Per rispondere usa la mail del mittente: clic sull'indirizzo."],
+  },
+  "/posta": {
+    titolo: "Posta",
+    cosa: "La tua casella email di Cosmonet, in sola lettura: aprire un messaggio non lo segna come letto.",
+    azioni: ["Clicca un messaggio per leggerlo.", "Per rispondere usa la webmail."],
+  },
   "/canali": {
     titolo: "Canali",
     cosa: "Le community di Cosmonet.",

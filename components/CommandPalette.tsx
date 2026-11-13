@@ -12,6 +12,8 @@ const PAGINE: Voce[] = [
   { href: "/sito", label: "Sito (elenco articoli)", sub: "tutti gli articoli" },
   { href: "/da-scrivere", label: "Da scrivere", sub: "notizie dai feed RSS" },
   { href: "/da-scrivere/fonti", label: "Fonti RSS", sub: "feed e notizie" },
+  { href: "/messaggi", label: "Messaggi dal sito", sub: "modulo contatti" },
+  { href: "/posta", label: "Posta", sub: "casella email" },
   { href: "/agenda", label: "Agenda", sub: "cose da fare" },
   { href: "/coda", label: "Coda di pubblicazione", sub: "programmati e bozze" },
   { href: "/pubblica", label: "Pubblica", sub: "Facebook, Instagram, Discord" },

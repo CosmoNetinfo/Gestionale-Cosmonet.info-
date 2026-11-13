@@ -10,6 +10,8 @@ const sezioni: { titolo: string; voci: { href: string; label: string; icon: stri
       { href: "/", label: "Panoramica", icon: "◧" },
       { href: "/rivedere", label: "Da rivedere", icon: "⚠" },
       { href: "/da-scrivere", label: "Da scrivere", icon: "✐" },
+      { href: "/messaggi", label: "Messaggi sito", icon: "✉" },
+      { href: "/posta", label: "Posta", icon: "@" },
       { href: "/agenda", label: "Agenda", icon: "☑" },
       { href: "/coda", label: "Coda", icon: "☷" },
       { href: "/pubblica", label: "Pubblica", icon: "➤" },

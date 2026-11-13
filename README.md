@@ -124,6 +124,8 @@ Copia `.env.example` come punto di partenza. **Non committare mai `.env.local` n
 | `COSMOMEMO_URL`, `COSMOMEMO_READ_TOKEN` | facoltative | Cosmo Memo in sola lettura |
 | `DISCORD_INVITE` | facoltativa | Codice dell'invito pubblico, per gli iscritti |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | facoltative | Iscritti del canale Telegram |
+| `CONTACT_SUPABASE_URL`, `CONTACT_SUPABASE_KEY`, `CONTACT_TABLE` | facoltative | Messaggi del modulo contatti (progetto Supabase del plugin, tabella default `contacts`) |
+| `MAIL_IMAP_HOST`, `MAIL_IMAP_PORT`, `MAIL_USER`, `MAIL_PASSWORD` | facoltative | Posta in sola lettura via IMAP |
 | `REVIEW_DAYS` | facoltativa | Soglia di revisione in giorni (default 90) |
 
 Per generare un token casuale:
