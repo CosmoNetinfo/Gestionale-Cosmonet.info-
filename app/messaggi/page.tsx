@@ -1,6 +1,7 @@
 import { leggiMessaggi, messaggiAttivi } from "@/lib/messaggi";
 import { Badge, Card, Kpi, PageHeader } from "@/components/ui";
 import { Rispondi } from "@/components/Rispondi";
+import { EliminaMessaggio } from "@/components/EliminaMessaggio";
 import { invioAttivo } from "@/lib/invio";
 
 export const dynamic = "force-dynamic";
@@ -56,7 +57,10 @@ export default async function Messaggi() {
                 </div>
                 {m.oggetto && <div className="mt-3 text-sm font-medium">{m.oggetto}</div>}
                 <p className="mt-2 whitespace-pre-wrap break-words text-sm">{m.testo || "(nessun testo riconosciuto)"}</p>
-                {m.email && invioAttivo() && <Rispondi a={m.email} oggetto={m.oggetto || "il tuo messaggio su Cosmonet.info"} citazione={m.testo} />}
+                <div className="mt-1 flex flex-wrap items-start">
+                  {m.email && invioAttivo() && <Rispondi a={m.email} oggetto={m.oggetto || "il tuo messaggio su Cosmonet.info"} citazione={m.testo} />}
+                  {m.campi.id !== undefined && <span className="mt-4"><EliminaMessaggio id={m.id} /></span>}
+                </div>
                 {!m.testo && (
                   <details className="mt-2 text-xs text-muted">
                     <summary className="cursor-pointer">Mostra i campi grezzi</summary>
@@ -66,7 +70,7 @@ export default async function Messaggi() {
               </Card>
             ))}
           </div>
-          <p className="mt-6 text-xs text-muted">Le risposte partono dalla casella danielespalletti@cosmonet.info solo dopo la tua conferma. Per cancellare i messaggi usa la dashboard del plugin sul sito.</p>
+          <p className="mt-6 text-xs text-muted">Le risposte partono dalla casella danielespalletti@cosmonet.info solo dopo la tua conferma. Elimina cancella il messaggio per sempre dal database del modulo contatti (chiede conferma).</p>
         </>
       )}
     </>

@@ -95,6 +95,7 @@ export interface MailDettaglio {
   allegati: string[];
   rispondiA?: string;
   idMessaggio?: string;
+  nonLetta?: boolean;
 }
 
 export async function leggiMail(uid: number, inviata = false): Promise<{ ok: boolean; mail?: MailDettaglio; errore?: string }> {
@@ -106,6 +107,7 @@ export async function leggiMail(uid: number, inviata = false): Promise<{ ok: boo
     if (!cartella) return { ok: false, errore: "Cartella «Posta inviata» non trovata" };
     const lock = await cl.getMailboxLock(cartella, { readOnly: true });
     try {
+      const info = await cl.fetchOne(String(uid), { flags: true }, { uid: true }).catch(() => null);
       const scarico = await cl.download(String(uid), undefined, { uid: true, maxBytes: 2_000_000 });
       if (!scarico || !scarico.content) return { ok: false, errore: "Messaggio non trovato" };
       const parti: Buffer[] = [];
@@ -122,9 +124,59 @@ export async function leggiMail(uid: number, inviata = false): Promise<{ ok: boo
           testo: testo.slice(0, 20000),
           rispondiA: (p.replyTo?.value?.[0]?.address ?? p.from?.value?.[0]?.address ?? "").trim() || undefined,
           idMessaggio: p.messageId ?? undefined,
+          nonLetta: info && info.flags ? !info.flags.has("\\Seen") : undefined,
           allegati: (p.attachments ?? []).map((a) => `${a.filename ?? "allegato"} (${Math.round(a.size / 1024)} KB)`),
         },
       };
+    } finally {
+      lock.release();
+    }
+  } catch (e) {
+    return { ok: false, errore: msg(e) };
+  } finally {
+    await cl.logout().catch(() => undefined);
+  }
+}
+
+/** Segna un messaggio come letto o non letto. */
+export async function segnaLetto(uid: number, letto: boolean, inviata = false): Promise<{ ok: boolean; errore?: string }> {
+  if (!conf() || !Number.isInteger(uid) || uid <= 0) return { ok: false, errore: "Richiesta non valida" };
+  const cl = client();
+  try {
+    await cl.connect();
+    const cartella = await percorso(cl, inviata);
+    if (!cartella) return { ok: false, errore: "Cartella non trovata" };
+    const lock = await cl.getMailboxLock(cartella);
+    try {
+      if (letto) await cl.messageFlagsAdd(String(uid), ["\\Seen"], { uid: true });
+      else await cl.messageFlagsRemove(String(uid), ["\\Seen"], { uid: true });
+      return { ok: true };
+    } finally {
+      lock.release();
+    }
+  } catch (e) {
+    return { ok: false, errore: msg(e) };
+  } finally {
+    await cl.logout().catch(() => undefined);
+  }
+}
+
+/** Sposta nel Cestino (recuperabile dalla webmail). Non cancella mai in modo definitivo. */
+export async function spostaNelCestino(uid: number, inviata = false): Promise<{ ok: boolean; errore?: string }> {
+  if (!conf() || !Number.isInteger(uid) || uid <= 0) return { ok: false, errore: "Richiesta non valida" };
+  const cl = client();
+  try {
+    await cl.connect();
+    const cartelle = await cl.list();
+    const cestino =
+      cartelle.find((x) => x.specialUse === "\\Trash") ?? cartelle.find((x) => /^(trash|cestino|deleted|posta eliminata|eliminat)/i.test(x.name));
+    if (!cestino) return { ok: false, errore: "Cartella Cestino non trovata: non cancello nulla" };
+    const cartella = await percorso(cl, inviata);
+    if (!cartella) return { ok: false, errore: "Cartella non trovata" };
+    const lock = await cl.getMailboxLock(cartella);
+    try {
+      const r = await cl.messageMove(String(uid), cestino.path, { uid: true });
+      return r ? { ok: true } : { ok: false, errore: "Spostamento non riuscito" };
     } finally {
       lock.release();
     }

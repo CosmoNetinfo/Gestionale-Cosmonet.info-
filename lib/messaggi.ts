@@ -65,3 +65,22 @@ export async function leggiMessaggi(limite = 100): Promise<{ ok: boolean; messag
     return { ok: false, messaggi: [], errore: e instanceof Error ? e.message : "Errore di rete" };
   }
 }
+
+/** Cancella UN messaggio del modulo contatti (per id reale della riga). Definitivo. */
+export async function eliminaMessaggio(id: string): Promise<{ ok: boolean; errore?: string }> {
+  const c = conf();
+  if (!c) return { ok: false, errore: "Non collegato" };
+  if (!/^[A-Za-z0-9_-]{1,64}$/.test(id)) return { ok: false, errore: "Identificativo non valido" };
+  try {
+    const res = await fetch(`${c.url}/rest/v1/${encodeURIComponent(c.table)}?id=eq.${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      headers: { apikey: c.key, Authorization: `Bearer ${c.key}`, Prefer: "return=representation" },
+      cache: "no-store",
+    });
+    if (!res.ok) return { ok: false, errore: `Supabase ${res.status}` };
+    const righe = (await res.json().catch(() => [])) as unknown[];
+    return righe.length === 1 ? { ok: true } : { ok: false, errore: "Nessun messaggio cancellato" };
+  } catch (e) {
+    return { ok: false, errore: e instanceof Error ? e.message : "Errore di rete" };
+  }
+}

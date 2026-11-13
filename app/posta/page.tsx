@@ -15,7 +15,7 @@ export default async function Posta({ searchParams }: { searchParams: { c?: stri
 
   return (
     <>
-      <PageHeader title="Posta" subtitle={attiva ? `Casella ${indirizzoPosta()} (le risposte partono solo dopo la tua conferma)` : "La tua casella email di Cosmonet"} />
+      <PageHeader right={attiva ? <Link href="/posta/nuova" className="rounded-md bg-primary px-3 py-1.5 text-sm text-white">✎ Scrivi</Link> : undefined} title="Posta" subtitle={attiva ? `Casella ${indirizzoPosta()} (le risposte partono solo dopo la tua conferma)` : "La tua casella email di Cosmonet"} />
       {attiva && (
         <div className="mb-5 flex gap-2 text-sm">
           <Link href="/posta" className={"rounded-md border px-3 py-1.5 " + (!inviata ? "border-primary bg-primary-soft text-primary" : "border-line text-muted hover:border-primary")}>In arrivo</Link>

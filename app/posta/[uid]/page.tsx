@@ -2,6 +2,7 @@ import Link from "next/link";
 import { leggiMail, postaAttiva } from "@/lib/posta";
 import { Card, PageHeader } from "@/components/ui";
 import { Rispondi } from "@/components/Rispondi";
+import { AzioniMail } from "@/components/AzioniMail";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +32,7 @@ export default async function Mail({ params, searchParams }: { params: { uid: st
           </div>
           <hr className="my-4 border-line" />
           <p className="whitespace-pre-wrap break-words text-sm">{r.mail.testo}</p>
+          <AzioniMail uid={uid} inviata={inviata} nonLetta={r.mail.nonLetta ?? false} />
           {rispondiA && <Rispondi a={rispondiA} oggetto={r.mail.oggetto} citazione={r.mail.testo.slice(0, 3000)} inRispostaA={r.mail.idMessaggio} />}
           <p className="mt-6 text-xs text-muted">Si vede solo il testo semplice. Link e immagini del messaggio originale non vengono caricati.</p>
         </Card>
