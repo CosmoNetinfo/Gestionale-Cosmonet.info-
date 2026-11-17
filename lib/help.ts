@@ -106,6 +106,11 @@ const G: Record<string, Guida> = {
     azioni: ["Confronta i click prima e dopo ogni «✓ Rivisto».", "Ripeti il tipo di intervento che funziona."],
     consiglio: "Servono almeno 28 giorni dopo la revisione per giudicare.",
   },
+  "/plugin": {
+    titolo: "Plugin e snippet",
+    cosa: "L'elenco dei plugin installati su WordPress e degli snippet di codice.",
+    azioni: ["Guarda quali plugin misurano il traffico.", "Controlla i plugin spenti: se non servono, toglili."],
+  },
   "/salute": {
     titolo: "Salute del sito",
     cosa: "Controlli automatici sugli articoli per trovare cosa sistemare.",

@@ -29,6 +29,7 @@ const PAGINE: Voce[] = [
   { href: "/opportunita", label: "Opportunità", sub: "parole chiave e link interni" },
   { href: "/impatto", label: "Impatto delle revisioni", sub: "prima e dopo" },
   { href: "/salute", label: "Salute del sito", sub: "controlli automatici" },
+  { href: "/plugin", label: "Plugin e snippet", sub: "cosa è installato sul sito" },
   { href: "/link", label: "Link e immagini", sub: "link rotti, alt mancanti" },
   { href: "/indicizzazione", label: "Indicizzazione", sub: "articoli su Google" },
   { href: "/velocita", label: "Velocità", sub: "PageSpeed" },

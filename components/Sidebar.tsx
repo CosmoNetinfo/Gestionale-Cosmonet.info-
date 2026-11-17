@@ -26,6 +26,7 @@ const sezioni: { titolo: string; voci: { href: string; label: string; icon: stri
       { href: "/link", label: "Link e immagini", icon: "⛓" },
       { href: "/indicizzazione", label: "Indicizzazione", icon: "◎" },
       { href: "/velocita", label: "Velocità", icon: "⚡" },
+      { href: "/plugin", label: "Plugin e snippet", icon: "✦" },
     ],
   },
   {
