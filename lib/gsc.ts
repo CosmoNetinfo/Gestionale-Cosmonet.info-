@@ -588,3 +588,84 @@ export function consoleLink(): string | null {
   if (!site) return null;
   return `https://search.google.com/search-console?resource_id=${encodeURIComponent(site)}`;
 }
+
+/* ------------------------------------------------------------------ */
+/* Periodi selezionabili con confronto (Panoramica)                    */
+/* ------------------------------------------------------------------ */
+
+export interface GscPoint {
+  date: string;
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  position: number;
+}
+
+export interface GscTotals {
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  position: number;
+}
+
+/** Periodi offerti: giorno, settimana, mese, 3 mesi, anno. */
+export const PERIODI = [
+  { id: "1", days: 1, label: "Giorno" },
+  { id: "7", days: 7, label: "Settimana" },
+  { id: "28", days: 28, label: "Mese" },
+  { id: "91", days: 91, label: "3 mesi" },
+  { id: "365", days: 365, label: "Anno" },
+] as const;
+
+function sumTotals(points: GscPoint[]): GscTotals {
+  const clicks = points.reduce((s, p) => s + p.clicks, 0);
+  const impressions = points.reduce((s, p) => s + p.impressions, 0);
+  const posWeight = points.reduce((s, p) => s + p.position * p.impressions, 0);
+  return {
+    clicks,
+    impressions,
+    ctr: impressions > 0 ? clicks / impressions : 0,
+    position: impressions > 0 ? posWeight / impressions : 0,
+  };
+}
+
+/**
+ * Dati di Search Console per l'ultimo periodo di `days` giorni, con il periodo
+ * precedente di pari durata per il confronto. Search Console conserva circa
+ * 16 mesi: se il periodo precedente non ci sta, il confronto non c'è.
+ */
+export async function getGscPeriod(days: number): Promise<{
+  points: GscPoint[];
+  cur: GscTotals;
+  prev?: GscTotals;
+  start: string;
+  end: string;
+  note?: string;
+}> {
+  const empty = { points: [], cur: { clicks: 0, impressions: 0, ctr: 0, position: 0 }, start: "", end: "" };
+  const DAY = 86400000;
+  const end = new Date(Date.now() - 2 * DAY); // gli ultimi 2 giorni non sono completi
+  const curStart = new Date(end.getTime() - (days - 1) * DAY);
+  const prevEnd = new Date(curStart.getTime() - DAY);
+  const prevStart = new Date(prevEnd.getTime() - (days - 1) * DAY);
+  const chartDays = Math.max(days, 14); // per 1 giorno mostra comunque 2 settimane di contesto
+  const chartStart = new Date(end.getTime() - (chartDays - 1) * DAY);
+  const limit = new Date(end.getTime() - 480 * DAY); // ~16 mesi
+  const canCompare = prevStart >= limit;
+  const from = new Date(Math.min(chartStart.getTime(), canCompare ? prevStart.getTime() : chartStart.getTime()));
+
+  const { rows, note } = await gscRows(
+    { startDate: iso(from), endDate: iso(end), dimensions: ["date"], rowLimit: 1000 },
+    { maxPages: 1, revalidate: 3600 },
+  );
+  if (rows.length === 0) return { ...empty, note: note ?? "Nessun dato da Search Console al momento" };
+
+  const all: GscPoint[] = rows
+    .map((r) => ({ date: r.keys[0], clicks: r.clicks, impressions: r.impressions, ctr: r.ctr, position: r.position }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+  const between = (a: Date, b: Date) => all.filter((p) => p.date >= iso(a) && p.date <= iso(b));
+  const points = between(chartStart, end);
+  const cur = sumTotals(between(curStart, end));
+  const prev = canCompare ? sumTotals(between(prevStart, prevEnd)) : undefined;
+  return { points, cur, prev, start: iso(curStart), end: iso(end), note };
+}
