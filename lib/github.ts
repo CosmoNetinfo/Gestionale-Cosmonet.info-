@@ -56,7 +56,7 @@ export async function getRepos(): Promise<ReposResult> {
   if (token) headers.Authorization = `Bearer ${token}`;
 
   const endpoint = token
-    ? "https://api.github.com/user/repos?affiliation=owner&sort=pushed&per_page=100"
+    ? "https://api.github.com/user/repos?affiliation=owner,collaborator,organization_member&visibility=all&sort=pushed&per_page=100"
     : `https://api.github.com/users/${encodeURIComponent(user!)}/repos?sort=pushed&per_page=100`;
 
   try {
