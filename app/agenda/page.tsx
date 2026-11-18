@@ -15,8 +15,8 @@ const bello = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString("it-I
 
 function Riga({ t }: { t: AgendaTask }) {
   return (
-    <li className="flex items-center gap-3 py-2.5 text-sm">
-      <form action={fatto}>
+    <li className="flex items-start gap-3 py-2.5 text-sm">
+      <form action={fatto} className="mt-0.5">
         <input type="hidden" name="id" value={t.id} />
         <button title="Segna fatto" className="h-5 w-5 rounded-full border border-line hover:border-primary hover:bg-primary-soft" />
       </form>
@@ -27,8 +27,21 @@ function Riga({ t }: { t: AgendaTask }) {
           {t.time ? ` · ${t.time.slice(0, 5)}` : ""} · {t.kind}
           {t.project ? ` · ${t.project}` : ""}
         </div>
+        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+          {([["Domani", 1], ["+7 gg", 7]] as const).map(([label, giorni]) => (
+            <form key={giorni} action={rimanda}>
+              <input type="hidden" name="id" value={t.id} />
+              <input type="hidden" name="giorni" value={giorni} />
+              <button title={`Rimanda: ${label}`} className="rounded-md border border-line px-2 py-0.5 text-xs text-muted hover:border-primary hover:text-primary">
+                {label}
+              </button>
+            </form>
+          ))}
+          {t.priority === "alta" && <Badge tone="warn">alta</Badge>}
+          {!!t.postponed_count && <Badge tone="neutral">rimandata {t.postponed_count}×</Badge>}
+        </div>
         {(t.notes || t.title.length > 50) && (
-          <details className="mt-1 text-xs">
+          <details className="mt-1.5 text-xs">
             <summary className="cursor-pointer text-primary hover:underline">{t.notes ? "Apri note" : "Mostra tutto"}</summary>
             <div className="mt-1.5 space-y-1.5 rounded-md border border-line p-2.5">
               <p className="break-words text-sm font-medium">{t.title}</p>
@@ -37,19 +50,6 @@ function Riga({ t }: { t: AgendaTask }) {
           </details>
         )}
       </div>
-      <div className="flex shrink-0 gap-1">
-        {([["Domani", 1], ["+7 gg", 7]] as const).map(([label, giorni]) => (
-          <form key={giorni} action={rimanda}>
-            <input type="hidden" name="id" value={t.id} />
-            <input type="hidden" name="giorni" value={giorni} />
-            <button title={`Rimanda: ${label}`} className="rounded-md border border-line px-2 py-0.5 text-xs text-muted hover:border-primary hover:text-primary">
-              {label}
-            </button>
-          </form>
-        ))}
-      </div>
-      {t.priority === "alta" && <Badge tone="warn">alta</Badge>}
-      {!!t.postponed_count && <Badge tone="neutral">rimandata {t.postponed_count}×</Badge>}
     </li>
   );
 }
