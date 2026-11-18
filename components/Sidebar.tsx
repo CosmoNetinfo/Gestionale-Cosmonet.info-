@@ -55,6 +55,7 @@ const sezioni: { titolo: string; voci: { href: string; label: string; icon: stri
       { href: "/repository", label: "Repository", icon: "⌥" },
       { href: "/memo", label: "Cosmo Memo", icon: "✎" },
       { href: "/archivio", label: "Archivio", icon: "▣" },
+      { href: "/stato-360", label: "Stato 360", icon: "◉" },
       { href: "/stato", label: "Stato servizi", icon: "●" },
       { href: "/debug", label: "Debug", icon: "✱" },
       { href: "/impostazioni", label: "Impostazioni", icon: "⚙" },

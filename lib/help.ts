@@ -131,6 +131,11 @@ const G: Record<string, Guida> = {
     cosa: "Il sito è online? Certificato, sitemap, API.",
     azioni: ["Controlla se tutto è verde.", "Se qualcosa è rosso, apri Debug per i dettagli."],
   },
+  "/stato-360": {
+    titolo: "Stato 360",
+    cosa: "Un semaforo per ogni area (sito, velocità, Google, collegamenti) e le ultime misure del monitor giornaliero.",
+    azioni: ["Guarda se la situazione generale è verde.", "Se un'area è gialla o rossa, apri Debug per sapere come risolvere."],
+  },
   "/debug": {
     titolo: "Debug",
     cosa: "Controllo di tutto il gestionale: collegamenti, chiavi e dati.",

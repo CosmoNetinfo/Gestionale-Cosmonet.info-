@@ -1,10 +1,10 @@
 import { timingSafeEqual } from "crypto";
 import { NextResponse, type NextRequest } from "next/server";
-import { avvisi, checkSpeed, checkUptime, saveRows, type MonitorRow } from "@/lib/monitor";
+import { articoliTop, avvisi, checkSpeed, checkUptime, saveRows, type MonitorRow } from "@/lib/monitor";
 import { sendTelegram, telegramConfigured } from "@/lib/telegram";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 120;
+export const maxDuration = 150;
 
 function authorized(req: NextRequest, secret: string): boolean {
   const given = Buffer.from(req.headers.get("authorization") ?? "");
@@ -23,9 +23,11 @@ export async function GET(req: NextRequest) {
 
   const home = (process.env.WP_BASE_URL?.replace(/\/$/, "") ?? "https://www.cosmonet.info") + "/";
   const withSpeed = Boolean(process.env.PAGESPEED_API_KEY?.trim());
+  const top = withSpeed ? await articoliTop(3).catch(() => [] as string[]) : [];
   const rows: MonitorRow[] = await Promise.all([
     checkUptime(home),
     ...(withSpeed ? [checkSpeed(home, "mobile"), checkSpeed(home, "desktop")] : []),
+    ...top.map((u) => checkSpeed(u, "articolo")),
   ]);
 
   const dry = req.nextUrl.searchParams.get("dry") === "1";
@@ -41,6 +43,6 @@ export async function GET(req: NextRequest) {
     errore: salva.errore,
     telegram,
     avvisi: alerts,
-    misure: rows.map((r) => ({ kind: r.kind, score: r.score, lcp: r.lcp, tbt: r.tbt, http: r.http_status, ttfb_ms: r.ttfb_ms, cert_days: r.cert_days, errore: r.errore })),
+    misure: rows.map((r) => ({ kind: r.kind, url: r.url, score: r.score, lcp: r.lcp, tbt: r.tbt, http: r.http_status, ttfb_ms: r.ttfb_ms, cert_days: r.cert_days, errore: r.errore })),
   });
 }
