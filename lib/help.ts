@@ -152,7 +152,7 @@ const G: Record<string, Guida> = {
     azioni: [
       "Clicca il nome di una pagina in tabella per aprire tutto il dettaglio sotto.",
       "Guarda prima i «Visitatori reali»: sono i dati che contano per Google.",
-      "Dopo una modifica al sito usa «Misura di nuovo» per ignorare la cache di 6 ore.",
+      "Dopo una modifica al sito usa «Misura di nuovo»: rifà la misura della pagina aperta in dettaglio, ignorando la cache di 6 ore.",
     ],
   },
   "/memo": {

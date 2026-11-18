@@ -19,6 +19,7 @@ function catTone(c: FieldMetric["category"] | undefined): "ok" | "warn" | "dange
 }
 
 export default async function Velocita({ searchParams }: { searchParams?: { s?: string; url?: string; d?: string; fresh?: string } }) {
+  const t0 = Date.now();
   const strategy: Strategy = searchParams?.s === "desktop" ? "desktop" : "mobile";
   const base = process.env.WP_BASE_URL?.replace(/\/$/, "") ?? "https://www.cosmonet.info";
 
@@ -41,7 +42,7 @@ export default async function Velocita({ searchParams }: { searchParams?: { s?: 
             </Link>
           ))}
           <Link
-            href={`/velocita?s=${strategy}&fresh=1${searchParams?.url ? `&url=${encodeURIComponent(searchParams.url)}` : ""}`}
+            href={`/velocita?s=${strategy}&fresh=1${searchParams?.d ? `&d=${encodeURIComponent(searchParams.d)}` : ""}${searchParams?.url ? `&url=${encodeURIComponent(searchParams.url)}` : ""}#dettaglio`}
             className="rounded-lg border border-line px-3 py-2 text-muted hover:text-ink"
           >
             Misura di nuovo
@@ -77,8 +78,12 @@ export default async function Velocita({ searchParams }: { searchParams?: { s?: 
   const custom = searchParams?.url && /^https?:\/\//.test(searchParams.url) ? searchParams.url : null;
   if (custom && !titles.has(custom)) titles.set(custom, { title: "Indirizzo scelto" });
 
-  const results = await runMany(Array.from(titles.keys()), strategy, searchParams?.fresh === "1");
   const wanted = searchParams?.d && titles.has(searchParams.d) ? searchParams.d : custom && titles.has(custom) ? custom : base + "/";
+  // «Misura di nuovo» rifà solo la pagina scelta (le altre restano in cache): 5 misure nuove insieme non stanno nei 60 secondi.
+  const results = await runMany(Array.from(titles.keys()), strategy, {
+    freshUrls: searchParams?.fresh === "1" ? [wanted] : [],
+    deadline: t0 + 52000,
+  });
   const selected = results.find((r) => r.url === wanted && r.ok) ?? results.find((r) => r.ok);
   const okRes = results.filter((r) => r.ok);
   const media = okRes.length ? Math.round(okRes.reduce((s, r) => s + (r.score ?? 0), 0) / okRes.length) : 0;

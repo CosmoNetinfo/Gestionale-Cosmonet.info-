@@ -321,10 +321,17 @@ export async function runPagespeed(url: string, strategy: Strategy, deadline?: n
 }
 
 /**
- * Analizza più indirizzi insieme. Tutti partono nello stesso momento e condividono la stessa scadenza,
- * così la pagina resta sotto il limite di 60 secondi di Vercel; un indirizzo lento non blocca gli altri.
+ * Analizza più indirizzi insieme. Tutti partono nello stesso momento e condividono la stessa scadenza
+ * (`deadline`, in ms assoluti: la pagina la calcola dal proprio inizio, così resta sotto il limite di
+ * 60 secondi di Vercel); un indirizzo lento non blocca gli altri.
+ * `freshUrls` sono gli indirizzi da misurare di nuovo ignorando la cache; gli altri usano quella di 6 ore.
  */
-export async function runMany(urls: string[], strategy: Strategy, fresh = false): Promise<SpeedResult[]> {
-  const deadline = Date.now() + 56000;
-  return Promise.all(urls.map((u) => runPagespeed(u, strategy, deadline, fresh)));
+export async function runMany(
+  urls: string[],
+  strategy: Strategy,
+  opts: { freshUrls?: string[]; deadline?: number } = {},
+): Promise<SpeedResult[]> {
+  const deadline = opts.deadline ?? Date.now() + 50000;
+  const fresh = new Set(opts.freshUrls ?? []);
+  return Promise.all(urls.map((u) => runPagespeed(u, strategy, deadline, fresh.has(u))));
 }
