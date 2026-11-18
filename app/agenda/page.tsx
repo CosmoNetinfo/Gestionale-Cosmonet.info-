@@ -1,6 +1,6 @@
 import { agendaAttiva, agendaTasks, AGENDA_SITO, type AgendaTask } from "@/lib/agenda";
 import { Badge, Card, Kpi, PageHeader } from "@/components/ui";
-import { fatto } from "./actions";
+import { fatto, rimanda } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +27,17 @@ function Riga({ t }: { t: AgendaTask }) {
           {t.time ? ` · ${t.time.slice(0, 5)}` : ""} · {t.kind}
           {t.project ? ` · ${t.project}` : ""}
         </div>
+      </div>
+      <div className="flex shrink-0 gap-1">
+        {([["Domani", 1], ["+7 gg", 7]] as const).map(([label, giorni]) => (
+          <form key={giorni} action={rimanda}>
+            <input type="hidden" name="id" value={t.id} />
+            <input type="hidden" name="giorni" value={giorni} />
+            <button title={`Rimanda: ${label}`} className="rounded-md border border-line px-2 py-0.5 text-xs text-muted hover:border-primary hover:text-primary">
+              {label}
+            </button>
+          </form>
+        ))}
       </div>
       {t.priority === "alta" && <Badge tone="warn">alta</Badge>}
       {!!t.postponed_count && <Badge tone="neutral">rimandata {t.postponed_count}×</Badge>}

@@ -42,4 +42,6 @@ export async function agendaTasks(start: string, end: string): Promise<AgendaTas
 
 export const agendaComplete = (task_id: string) => agendaCall("complete_task", { task_id });
 
+export const agendaPostpone = (task_id: string, to_date: string) => agendaCall("postpone_task", { task_id, to_date });
+
 export const AGENDA_SITO = "https://cosmo-agenda.vercel.app/";
