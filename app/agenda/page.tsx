@@ -27,6 +27,15 @@ function Riga({ t }: { t: AgendaTask }) {
           {t.time ? ` · ${t.time.slice(0, 5)}` : ""} · {t.kind}
           {t.project ? ` · ${t.project}` : ""}
         </div>
+        {(t.notes || t.title.length > 50) && (
+          <details className="mt-1 text-xs">
+            <summary className="cursor-pointer text-primary hover:underline">{t.notes ? "Apri note" : "Mostra tutto"}</summary>
+            <div className="mt-1.5 space-y-1.5 rounded-md border border-line p-2.5">
+              <p className="break-words text-sm font-medium">{t.title}</p>
+              {t.notes && <p className="whitespace-pre-wrap break-words text-muted">{t.notes}</p>}
+            </div>
+          </details>
+        )}
       </div>
       <div className="flex shrink-0 gap-1">
         {([["Domani", 1], ["+7 gg", 7]] as const).map(([label, giorni]) => (
