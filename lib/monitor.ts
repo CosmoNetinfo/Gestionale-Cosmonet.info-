@@ -5,6 +5,7 @@ import { loadArticles } from "./articles";
 import { getGscStats, inspectMany, normUrl } from "./gsc";
 import { scanBatch } from "./linkcheck";
 import { daysSince } from "./review";
+import { getPlugins } from "./plugins";
 
 /**
  * Monitor del sito: salva su Supabase (tabella speed_history) velocità e disponibilità,
@@ -13,7 +14,7 @@ import { daysSince } from "./review";
 export interface MonitorRow {
   id?: number;
   taken_at: string;
-  kind: "mobile" | "desktop" | "uptime" | "articolo";
+  kind: "mobile" | "desktop" | "uptime" | "articolo" | "controlli";
   url: string;
   score: number | null;
   lcp: number | null;
@@ -157,6 +158,28 @@ export async function articoliTop(n = 3): Promise<string[]> {
     .map((x) => x.a.url);
 }
 
+/** true se il gruppo «User-agent: *» contiene «Disallow: /» (tutto il sito). */
+function bloccaTutto(txt: string): boolean {
+  let tuttiGliAgenti = false;
+  let inIntestazione = false;
+  for (const riga of txt.split(/\r?\n/)) {
+    const l = riga.replace(/#.*/, "").trim();
+    if (!l) continue;
+    const m = l.match(/^([a-z-]+)\s*:\s*(.*)$/i);
+    if (!m) continue;
+    const k = m[1].toLowerCase();
+    if (k === "user-agent") {
+      if (!inIntestazione) tuttiGliAgenti = false;
+      if (m[2].trim() === "*") tuttiGliAgenti = true;
+      inIntestazione = true;
+    } else {
+      inIntestazione = false;
+      if (k === "disallow" && tuttiGliAgenti && m[2].trim() === "/") return true;
+    }
+  }
+  return false;
+}
+
 /** robots.txt e sitemap: se spariscono o bloccano tutto, Google smette di vedere il sito. */
 export async function controlloSeoBase(base: string): Promise<string[]> {
   const out: string[] = [];
@@ -170,7 +193,7 @@ export async function controlloSeoBase(base: string): Promise<string[]> {
   };
   const [robots, s1, s2] = await Promise.all([get("/robots.txt"), get("/sitemap_index.xml"), get("/wp-sitemap.xml")]);
   if (robots.status !== 200) out.push(`🤖 robots.txt non raggiungibile (stato ${robots.status || "nessuna risposta"})`);
-  else if (/user-agent:\s*\*\s*[\r\n]+(?:[^\r\n]*[\r\n]+)*?\s*disallow:\s*\/\s*(?:[\r\n]|$)/i.test(robots.text)) out.push("🚫 Il robots.txt blocca tutto il sito ai motori di ricerca: controlla subito «Visibilità sui motori» in WordPress");
+  else if (bloccaTutto(robots.text)) out.push("🚫 Il robots.txt blocca tutto il sito ai motori di ricerca: controlla subito «Visibilità sui motori» in WordPress");
   if (s1.status !== 200 && s2.status !== 200) out.push("🗺️ La sitemap non risponde (né sitemap_index.xml né wp-sitemap.xml)");
   return out;
 }
@@ -203,4 +226,113 @@ export async function controlloLink(): Promise<string[]> {
   for (const b of r.rotti.slice(0, 6)) out.push(`⛓ Link rotto (${b.status}) in «${b.title}»: ${b.url}`);
   if (r.rotti.length > 6) out.push(`… e altri ${r.rotti.length - 6} link rotti in questo blocco`);
   return out;
+}
+
+const UA = { "User-Agent": "CosmoControl-Monitor/1.0" };
+const noindex = (html: string, header: string | null) =>
+  /noindex/i.test(header ?? "") || /<meta[^>]+name=["']robots["'][^>]+content=["'][^"']*noindex/i.test(html);
+
+/** Scadenza del dominio (RDAP): avvisa 45 giorni prima. */
+export async function controlloDominio(base: string): Promise<string[]> {
+  const dominio = new URL(base).hostname.replace(/^www\./, "");
+  const r = await tfetch(`https://rdap.org/domain/${dominio}`, { cache: "no-store", redirect: "follow", headers: { Accept: "application/rdap+json" } }, 12000).catch(() => null);
+  if (!r || !r.ok) return []; // non verificabile: nessun falso allarme
+  const j = (await r.json().catch(() => null)) as { events?: { eventAction: string; eventDate: string }[] } | null;
+  const exp = j?.events?.find((e) => e.eventAction === "expiration")?.eventDate;
+  if (!exp) return [];
+  const giorni = Math.floor((new Date(exp).getTime() - Date.now()) / 86400000);
+  return giorni <= 45 ? [`🌐 Il dominio ${dominio} scade tra ${giorni} giorni (${new Date(exp).toLocaleDateString("it-IT")}): rinnovalo`] : [];
+}
+
+/** Home: reindirizzamento a HTTPS, nessun noindex per errore, titolo e canonical presenti. */
+export async function controlloHome(base: string): Promise<string[]> {
+  const out: string[] = [];
+  const [page, http] = await Promise.all([
+    tfetch(base + "/", { cache: "no-store", headers: UA }, 15000).catch(() => null),
+    tfetch(base.replace(/^https:/, "http:") + "/", { cache: "no-store", redirect: "manual", headers: UA }, 10000).catch(() => null),
+  ]);
+  if (page?.ok) {
+    const html = await page.text();
+    if (noindex(html, page.headers.get("x-robots-tag"))) out.push("🚫 La home ha «noindex»: Google non la mostrerebbe. Controlla Impostazioni → Lettura e il plugin SEO");
+    if (!/<title>[^<]{3,}<\/title>/i.test(html)) out.push("📝 La home non ha un titolo (tag title)");
+    if (!/<link[^>]+rel=["']canonical["']/i.test(html)) out.push("📝 La home non ha il link canonical");
+    if (/<(?:img|script|link)[^>]+(?:src|href)=["']http:\/\/(?!www\.w3\.org)/i.test(html)) out.push("🔓 La home carica risorse non sicure (http): il lucchetto del browser può sparire");
+  }
+  if (http && http.status < 300) out.push("🔓 La versione http:// del sito non rimanda a https://");
+  return out;
+}
+
+/** Pubblicazione: articoli programmati e non usciti, lunghi periodi senza nuovi articoli. */
+export async function controlloPubblicazione(): Promise<string[]> {
+  const { articles, demo } = await loadArticles();
+  if (demo) return [];
+  const out: string[] = [];
+  const persi = articles.filter((a) => a.status === "future" && new Date(a.date).getTime() < Date.now() - 45 * 60000);
+  for (const a of persi.slice(0, 4)) out.push(`🕒 Programmato e non pubblicato: «${a.title}» (doveva uscire il ${new Date(a.date).toLocaleString("it-IT")})`);
+  const pub = articles.filter((a) => a.status === "publish").sort((x, y) => y.date.localeCompare(x.date));
+  if (pub[0] && daysSince(pub[0].date) >= 4) out.push(`✍️ Nessun nuovo articolo da ${daysSince(pub[0].date)} giorni`);
+  return out;
+}
+
+/** Plugin attivi con una versione più nuova su wordpress.org (i plugin a pagamento o personali non si possono verificare). */
+export async function controlloPlugin(): Promise<string[]> {
+  const { plugins } = await getPlugins();
+  const attivi = plugins.filter((p) => p.status !== "inactive");
+  const vecchi: string[] = [];
+  await Promise.all(
+    attivi.map(async (p) => {
+      const slug = p.plugin.split("/")[0];
+      const r = await tfetch(`https://api.wordpress.org/plugins/info/1.0/${slug}.json`, { cache: "no-store" }, 10000).catch(() => null);
+      if (!r?.ok) return;
+      const v = ((await r.json().catch(() => null)) as { version?: string } | null)?.version;
+      if (!v || !p.version) return;
+      const num = (x: string) => x.split(/[.-]/).map((n) => parseInt(n, 10) || 0);
+      const a = num(v);
+      const b = num(p.version);
+      for (let i = 0; i < Math.max(a.length, b.length); i++) {
+        if ((a[i] ?? 0) !== (b[i] ?? 0)) {
+          if ((a[i] ?? 0) > (b[i] ?? 0)) vecchi.push(`${p.name} ${p.version} → ${v}`);
+          break;
+        }
+      }
+    }),
+  );
+  if (!vecchi.length) return [];
+  return [`🔌 ${vecchi.length} plugin da aggiornare: ${vecchi.slice(0, 8).join(", ")}${vecchi.length > 8 ? "…" : ""}`];
+}
+
+/** Un campione di pagine della sitemap: devono rispondere 200 e non avere noindex. */
+export async function controlloCampione(base: string): Promise<string[]> {
+  const leggi = async (u: string) => {
+    const r = await tfetch(u, { cache: "no-store", headers: UA }, 12000).catch(() => null);
+    return r?.ok ? await r.text() : "";
+  };
+  const locs = (x: string) => Array.from(x.matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/g), (m) => m[1]);
+  let idx = locs(await leggi(base + "/sitemap_index.xml"));
+  if (!idx.length) idx = locs(await leggi(base + "/wp-sitemap.xml"));
+  const post = idx.find((u) => /post-sitemap|posts-post/i.test(u)) ?? idx[0];
+  if (!post) return [];
+  const urls = locs(await leggi(post)).filter((u) => !/\.(jpe?g|png|webp|gif)$/i.test(u));
+  if (!urls.length) return [];
+  const campione = urls.sort(() => Math.random() - 0.5).slice(0, 8);
+  const out: string[] = [];
+  await Promise.all(
+    campione.map(async (u) => {
+      const r = await tfetch(u, { cache: "no-store", headers: UA }, 15000).catch(() => null);
+      if (!r) return void out.push(`📄 Pagina senza risposta: ${u}`);
+      if (r.status >= 400) return void out.push(`📄 Pagina della sitemap con errore ${r.status}: ${u}`);
+      if (noindex(await r.text(), r.headers.get("x-robots-tag"))) out.push(`🚫 Pagina della sitemap con noindex: ${u}`);
+    }),
+  );
+  return out;
+}
+
+/** Il monitor giornaliero ha girato di recente? */
+export async function controlloMonitorAttivo(): Promise<string[]> {
+  const { rows, errore } = await loadHistory("uptime", 1);
+  if (errore) return [];
+  const u = rows[0];
+  if (!u) return ["📡 Il monitor giornaliero non ha ancora salvato nessuna misura"];
+  const ore = (Date.now() - new Date(u.taken_at).getTime()) / 3600000;
+  return ore > 36 ? [`📡 Il monitor giornaliero non gira da ${Math.round(ore / 24)} giorni: controlla i Cron Jobs su Vercel`] : [];
 }

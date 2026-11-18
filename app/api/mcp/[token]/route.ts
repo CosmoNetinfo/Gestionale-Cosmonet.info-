@@ -6,6 +6,7 @@ import { getGscStats, getPageQueries, normUrl, opportunity } from "@/lib/gsc";
 import { daysSince, daysSinceTouched, isToReview, reviewDays } from "@/lib/review";
 import { markReviewed, supabaseConfigured } from "@/lib/supabase";
 import { runDiagnostics } from "@/lib/diagnostics";
+import { loadHistory } from "@/lib/monitor";
 import { runPagespeed } from "@/lib/pagespeed";
 import { revisionImpact, segments, siteQueries } from "@/lib/insights";
 import { getNote, saveNote } from "@/lib/notes";
@@ -214,6 +215,12 @@ const TOOLS = [
     inputSchema: { type: "object", properties: { a: { type: "string" }, oggetto: { type: "string" }, testo: { type: "string" }, conferma: { type: "boolean" } }, required: ["a", "oggetto", "testo", "conferma"] },
   },
   {
+    name: "stato_sito",
+    description:
+      "Stato di Cosmonet secondo il monitor giornaliero: ultimo controllo di disponibilità (stato HTTP, tempo di risposta, certificato), punteggi PageSpeed di home e articoli migliori, e le segnalazioni dei controlli (sitemap, indicizzazione, link rotti, plugin, dominio, pubblicazione). Solo lettura.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
     name: "pagespeed",
     description:
       "Misura una pagina con PageSpeed Insights e restituisce TUTTO: i 4 punteggi (prestazioni, accessibilità, best practice, SEO), le misure di laboratorio, i dati reali dei visitatori (pagina e intero sito), il peso della pagina e, per ogni categoria, i controlli non superati con i risparmi stimati. Solo lettura; può richiedere fino a 55 secondi. Se Google è lento riprova. url è facoltativo (default: home del sito); strategia: mobile (default) o desktop; nuova=true ignora la cache di 6 ore.",
@@ -384,6 +391,23 @@ async function callTool(name: string, args: Record<string, unknown>): Promise<un
       const testo = String(args.testo ?? "");
       if (/\*\*|^#{1,6}\s/m.test(testo)) throw new Error("Il testo contiene markdown (asterischi o #): toglilo");
       return await inviaRisposta({ a: String(args.a ?? ""), oggetto: String(args.oggetto ?? ""), testo });
+    }
+    case "stato_sito": {
+      const [up, mob, desk, art, ctl] = await Promise.all([
+        loadHistory("uptime", 3),
+        loadHistory("mobile", 3),
+        loadHistory("desktop", 3),
+        loadHistory("articolo", 6),
+        loadHistory("controlli", 1),
+      ]);
+      return {
+        errore: up.errore ?? mob.errore,
+        disponibilita: up.rows,
+        velocita_mobile: mob.rows,
+        velocita_desktop: desk.rows,
+        articoli: art.rows,
+        controlli: ctl.rows[0] ? { quando: ctl.rows[0].taken_at, segnalazioni: ctl.rows[0].errore ? ctl.rows[0].errore.split("\n") : [] } : null,
+      };
     }
     case "pagespeed": {
       const base = process.env.WP_BASE_URL?.replace(/\/$/, "") ?? "https://www.cosmonet.info";

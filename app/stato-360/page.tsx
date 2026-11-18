@@ -12,11 +12,12 @@ const nomeTono = (e: number) => (e === 2 ? "Problema" : e === 1 ? "Attenzione" :
 
 /** Un solo sguardo su tutto: un semaforo per ogni area e le ultime misure del monitor. */
 export default async function Stato360() {
-  const [diag, up, mob, art] = await Promise.all([
+  const [diag, up, mob, art, ctl] = await Promise.all([
     runDiagnostics({ origin: null, full: false }),
     loadHistory("uptime", 1),
     loadHistory("mobile", 1),
     loadHistory("articolo", 3),
+    loadHistory("controlli", 1),
   ]);
 
   const gruppi = new Map<string, { peggio: number; problemi: string[]; tot: number }>();
@@ -28,6 +29,8 @@ export default async function Stato360() {
     if (w > 0) g.problemi.push(`${c.nome}: ${c.dettaglio}`);
     gruppi.set(c.gruppo, g);
   }
+  const c = ctl.rows[0];
+  const segnalazioni = c?.errore ? c.errore.split("\n") : [];
   const u = up.rows[0];
   const m = mob.rows[0];
   const peggioTot = Math.max(0, ...Array.from(gruppi.values()).map((g) => g.peggio));
@@ -60,6 +63,24 @@ export default async function Stato360() {
           {(up.errore || mob.errore) && <li className="text-xs text-muted">{up.errore ?? mob.errore}</li>}
         </ul>
         <p className="mt-3 text-xs text-muted">Controllo eseguito alle {new Date(diag.generato).toLocaleTimeString("it-IT", { timeZone: "Europe/Rome", hour: "2-digit", minute: "2-digit" })}. Le misure di velocità e disponibilità arrivano dal monitor delle 6:30.</p>
+      </Card>
+
+      <Card className="mt-5">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-base font-semibold">Controlli giornalieri</h2>
+          <Badge tone={!c ? "neutral" : segnalazioni.length ? "warn" : "ok"}>{!c ? "nessuno ancora" : segnalazioni.length ? `${segnalazioni.length} segnalazioni` : "tutto ok"}</Badge>
+        </div>
+        <p className="mt-1 text-xs text-muted">
+          Sitemap e robots, home, pagine a campione, indicizzazione, link rotti, pubblicazione, plugin, dominio.
+          {c ? ` Ultimo giro: ${new Date(c.taken_at).toLocaleString("it-IT", { timeZone: "Europe/Rome" })}.` : ""}
+        </p>
+        {segnalazioni.length > 0 && (
+          <ul className="mt-2 space-y-1 text-sm">
+            {segnalazioni.map((x) => (
+              <li key={x}>{x}</li>
+            ))}
+          </ul>
+        )}
       </Card>
 
       <div className="mt-5 grid gap-4 md:grid-cols-2">
