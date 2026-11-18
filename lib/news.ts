@@ -1,3 +1,4 @@
+import { tfetch } from "./http";
 /**
  * "Da scrivere": legge i feed RSS del catalogo, toglie i doppioni, segnala le notizie su cui
  * hai già un articolo e gestisce la coda (tabella news_queue su Supabase).
@@ -36,7 +37,7 @@ const decode = (s: string) =>
 
 async function fetchFeed(feed: Feed, perFeed: number): Promise<NewsItem[]> {
   try {
-    const res = await fetch(feed.url, { headers: { "User-Agent": UA, Accept: "application/rss+xml, application/atom+xml, text/xml, */*" }, signal: AbortSignal.timeout(7000), cache: "no-store" });
+    const res = await tfetch(feed.url, { headers: { "User-Agent": UA, Accept: "application/rss+xml, application/atom+xml, text/xml, */*" }, signal: AbortSignal.timeout(7000), cache: "no-store" });
     if (!res.ok) return [];
     const xml = await res.text();
     const re = /<item\b[^>]*>([\s\S]*?)<\/item>|<entry\b[^>]*>([\s\S]*?)<\/entry>/gi;
@@ -175,7 +176,7 @@ export async function getQueue(): Promise<{ items: QueueItem[]; missing?: string
   const c = conf();
   if (!c) return { items: [], missing: "Supabase non collegato" };
   try {
-    const res = await fetch(`${c.url}/rest/v1/news_queue?select=*&order=added_at.desc&limit=500`, { headers: hdr(c.key), cache: "no-store", signal: AbortSignal.timeout(8000) });
+    const res = await tfetch(`${c.url}/rest/v1/news_queue?select=*&order=added_at.desc&limit=500`, { headers: hdr(c.key), cache: "no-store", signal: AbortSignal.timeout(8000) });
     if (!res.ok) return { items: [], missing: res.status === 404 ? "tabella news_queue non creata (vedi supabase/schema.sql)" : `errore ${res.status}` };
     return { items: (await res.json()) as QueueItem[] };
   } catch (e) {
@@ -186,7 +187,7 @@ export async function getQueue(): Promise<{ items: QueueItem[]; missing?: string
 export async function queueUpsert(it: { url: string; title: string; source?: string; cat?: string; stato?: QueueItem["stato"]; note?: string | null }): Promise<void> {
   const c = conf();
   if (!c) throw new Error("Supabase non collegato");
-  const res = await fetch(`${c.url}/rest/v1/news_queue?on_conflict=url`, {
+  const res = await tfetch(`${c.url}/rest/v1/news_queue?on_conflict=url`, {
     method: "POST",
     headers: hdr(c.key, { Prefer: "resolution=merge-duplicates,return=minimal" }),
     body: JSON.stringify({ stato: "da_scrivere", source: "", cat: "", ...it }),
@@ -198,7 +199,7 @@ export async function queueUpsert(it: { url: string; title: string; source?: str
 export async function queueRemove(url: string): Promise<void> {
   const c = conf();
   if (!c) throw new Error("Supabase non collegato");
-  const res = await fetch(`${c.url}/rest/v1/news_queue?url=eq.${encodeURIComponent(url)}`, { method: "DELETE", headers: hdr(c.key), cache: "no-store" });
+  const res = await tfetch(`${c.url}/rest/v1/news_queue?url=eq.${encodeURIComponent(url)}`, { method: "DELETE", headers: hdr(c.key), cache: "no-store" });
   if (!res.ok) throw new Error(`Supabase ${res.status}`);
 }
 
@@ -214,7 +215,7 @@ export async function getSources(): Promise<{ feeds: Feed[]; origine: "database"
   const c = conf();
   if (!c) return { feeds: FEEDS, origine: "catalogo" };
   try {
-    const res = await fetch(`${c.url}/rest/v1/news_sources?select=url,name,cat,lang&order=cat.asc,name.asc&limit=1000`, { headers: hdr(c.key), cache: "no-store", signal: AbortSignal.timeout(8000) });
+    const res = await tfetch(`${c.url}/rest/v1/news_sources?select=url,name,cat,lang&order=cat.asc,name.asc&limit=1000`, { headers: hdr(c.key), cache: "no-store", signal: AbortSignal.timeout(8000) });
     if (!res.ok) return { feeds: FEEDS, origine: "catalogo", missing: res.status === 404 ? "tabella news_sources non creata" : `errore ${res.status}` };
     const rows = (await res.json()) as Feed[];
     return rows.length ? { feeds: rows, origine: "database" } : { feeds: FEEDS, origine: "catalogo" };
@@ -272,10 +273,10 @@ export async function importaFonti(feeds: Feed[], sostituisci: boolean): Promise
   const c = conf();
   if (!c) throw new Error("Supabase non collegato");
   if (sostituisci) {
-    const del = await fetch(`${c.url}/rest/v1/news_sources?url=neq.`, { method: "DELETE", headers: hdr(c.key), cache: "no-store" });
+    const del = await tfetch(`${c.url}/rest/v1/news_sources?url=neq.`, { method: "DELETE", headers: hdr(c.key), cache: "no-store" });
     if (!del.ok) throw new Error(`Supabase ${del.status}: tabella news_sources creata? (vedi supabase/schema.sql)`);
   }
-  const res = await fetch(`${c.url}/rest/v1/news_sources?on_conflict=url`, {
+  const res = await tfetch(`${c.url}/rest/v1/news_sources?on_conflict=url`, {
     method: "POST",
     headers: hdr(c.key, { Prefer: "resolution=merge-duplicates,return=minimal" }),
     body: JSON.stringify(feeds),
@@ -288,5 +289,5 @@ export async function importaFonti(feeds: Feed[], sostituisci: boolean): Promise
 export async function ripristinaCatalogo(): Promise<void> {
   const c = conf();
   if (!c) throw new Error("Supabase non collegato");
-  await fetch(`${c.url}/rest/v1/news_sources?url=neq.`, { method: "DELETE", headers: hdr(c.key), cache: "no-store" });
+  await tfetch(`${c.url}/rest/v1/news_sources?url=neq.`, { method: "DELETE", headers: hdr(c.key), cache: "no-store" });
 }

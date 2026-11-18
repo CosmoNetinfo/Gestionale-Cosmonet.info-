@@ -1,3 +1,4 @@
+import { tfetch } from "./http";
 // Pubblica un'immagine su Supabase Storage (bucket pubblico "social") e restituisce l'indirizzo https.
 // Serve a Instagram, che scarica l'immagine da un indirizzo web invece di riceverla come file.
 
@@ -16,7 +17,7 @@ export async function caricaImmagine(file: File): Promise<{ ok: boolean; url?: s
   const nome = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
   const bytes = new Uint8Array(await file.arrayBuffer());
   const invia = () =>
-    fetch(`${c.url}/storage/v1/object/${BUCKET}/${nome}`, {
+    tfetch(`${c.url}/storage/v1/object/${BUCKET}/${nome}`, {
       method: "POST",
       headers: { apikey: c.key, Authorization: `Bearer ${c.key}`, "Content-Type": file.type, "x-upsert": "true" },
       body: bytes,
@@ -29,7 +30,7 @@ export async function caricaImmagine(file: File): Promise<{ ok: boolean; url?: s
       const t = await r.text();
       // Primo utilizzo: il contenitore non esiste ancora, lo creo e riprovo.
       if (/bucket not found|not found/i.test(t)) {
-        const b = await fetch(`${c.url}/storage/v1/bucket`, {
+        const b = await tfetch(`${c.url}/storage/v1/bucket`, {
           method: "POST",
           headers: { apikey: c.key, Authorization: `Bearer ${c.key}`, "Content-Type": "application/json" },
           body: JSON.stringify({ id: BUCKET, name: BUCKET, public: true, file_size_limit: 5242880, allowed_mime_types: ["image/jpeg", "image/png"] }),
@@ -57,7 +58,7 @@ export async function cancellaImmagine(url: string): Promise<void> {
   if (!url.startsWith(prefisso)) return;
   const nome = url.slice(prefisso.length);
   try {
-    await fetch(`${c.url}/storage/v1/object/${BUCKET}/${nome}`, {
+    await tfetch(`${c.url}/storage/v1/object/${BUCKET}/${nome}`, {
       method: "DELETE",
       headers: { apikey: c.key, Authorization: `Bearer ${c.key}` },
       cache: "no-store",
@@ -71,7 +72,7 @@ export async function pulisciVecchie(): Promise<void> {
   const c = conf();
   if (!c) return;
   try {
-    const r = await fetch(`${c.url}/storage/v1/object/list/${BUCKET}`, {
+    const r = await tfetch(`${c.url}/storage/v1/object/list/${BUCKET}`, {
       method: "POST",
       headers: { apikey: c.key, Authorization: `Bearer ${c.key}`, "Content-Type": "application/json" },
       body: JSON.stringify({ prefix: "", limit: 100, sortBy: { column: "created_at", order: "asc" } }),
@@ -83,7 +84,7 @@ export async function pulisciVecchie(): Promise<void> {
     const limite = Date.now() - 24 * 3600 * 1000;
     const vecchie = lista.filter((f) => f.created_at && new Date(f.created_at).getTime() < limite).map((f) => f.name);
     if (!vecchie.length) return;
-    await fetch(`${c.url}/storage/v1/object/${BUCKET}`, {
+    await tfetch(`${c.url}/storage/v1/object/${BUCKET}`, {
       method: "DELETE",
       headers: { apikey: c.key, Authorization: `Bearer ${c.key}`, "Content-Type": "application/json" },
       body: JSON.stringify({ prefixes: vecchie }),
@@ -97,7 +98,7 @@ export async function pulisciVecchie(): Promise<void> {
 export async function scaricaComeFile(url: string): Promise<{ ok: boolean; file?: File; errore?: string }> {
   if (!/^https:\/\//.test(url)) return { ok: false, errore: "L'indirizzo dell'immagine deve essere https" };
   try {
-    const r = await fetch(url, { cache: "no-store", redirect: "follow", signal: AbortSignal.timeout(20000) });
+    const r = await tfetch(url, { cache: "no-store", redirect: "follow", signal: AbortSignal.timeout(20000) });
     if (!r.ok) return { ok: false, errore: `Immagine non raggiungibile (${r.status})` };
     const tipo = (r.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();
     if (tipo !== "image/jpeg" && tipo !== "image/png") return { ok: false, errore: "L'immagine deve essere JPEG o PNG" };

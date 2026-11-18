@@ -1,3 +1,4 @@
+import { tfetch } from "./http";
 import { demoRepos } from "./demo";
 
 export interface Repo {
@@ -62,7 +63,7 @@ export async function getRepos(): Promise<ReposResult> {
   try {
     const repos: Repo[] = [];
     for (let page = 1; page <= 10; page++) {
-      const res = await fetch(`${endpoint}&page=${page}`, {
+      const res = await tfetch(`${endpoint}&page=${page}`, {
         headers,
         next: { revalidate: 300 },
       });

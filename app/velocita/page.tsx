@@ -4,6 +4,7 @@ import { getGscStats, normUrl } from "@/lib/gsc";
 import { pagespeedConfigured, runMany, type FieldMetric, type Strategy } from "@/lib/pagespeed";
 import { Badge, Card, DemoBanner, Kpi, PageHeader } from "@/components/ui";
 import SpeedDetail from "@/components/SpeedDetail";
+import SpeedTrend from "@/components/SpeedTrend";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -171,6 +172,8 @@ export default async function Velocita({ searchParams }: { searchParams?: { s?: 
       </Card>
 
       {selected && <SpeedDetail r={selected} title={titles.get(selected.url)?.title ?? selected.url} />}
+
+      <SpeedTrend strategy={strategy} />
 
       <Card className="mt-10">
         <h2 className="mb-2 text-base font-semibold">Controlla un altro indirizzo</h2>

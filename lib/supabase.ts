@@ -1,3 +1,4 @@
+import { tfetch } from "./http";
 /**
  * Accesso minimo a Supabase via REST (nessuna dipendenza).
  * Variabili: SUPABASE_URL, SUPABASE_SECRET_KEY (chiave segreta, solo lato server).
@@ -22,7 +23,7 @@ export async function getReviews(): Promise<Map<number, string>> {
   const c = conf();
   if (!c) return out;
   try {
-    const res = await fetch(`${c.url}/rest/v1/article_reviews?select=article_id,reviewed_at&limit=5000`, {
+    const res = await tfetch(`${c.url}/rest/v1/article_reviews?select=article_id,reviewed_at&limit=5000`, {
       headers: headers(c.key),
       cache: "no-store",
     });
@@ -39,7 +40,7 @@ export async function getReviews(): Promise<Map<number, string>> {
 export async function markReviewed(articleId: number): Promise<void> {
   const c = conf();
   if (!c) throw new Error("Supabase non è collegato");
-  const res = await fetch(`${c.url}/rest/v1/article_reviews?on_conflict=article_id`, {
+  const res = await tfetch(`${c.url}/rest/v1/article_reviews?on_conflict=article_id`, {
     method: "POST",
     headers: headers(c.key, { Prefer: "resolution=merge-duplicates,return=minimal" }),
     body: JSON.stringify({ article_id: articleId, reviewed_at: new Date().toISOString() }),

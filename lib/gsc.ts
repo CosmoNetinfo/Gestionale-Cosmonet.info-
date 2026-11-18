@@ -1,3 +1,4 @@
+import { tfetch } from "./http";
 import { createSign } from "crypto";
 
 export interface GscStats {
@@ -51,7 +52,7 @@ export async function getAccessToken(
   sign.update(`${header}.${claim}`);
   const signature = b64url(sign.sign(privateKey));
 
-  const res = await fetch("https://oauth2.googleapis.com/token", {
+  const res = await tfetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
@@ -98,7 +99,7 @@ export async function getGscStats(): Promise<GscResult> {
     const start = new Date(end.getTime() - GSC_DAYS * 86400000);
 
     for (let startRow = 0; startRow < 100000; startRow += 25000) {
-      const res = await fetch(
+      const res = await tfetch(
         `https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(site)}/searchAnalytics/query`,
         {
           method: "POST",
@@ -189,7 +190,7 @@ export async function getPageQueries(pageUrl: string, limit = 25): Promise<{ que
     const end = new Date(Date.now() - 2 * 86400000);
     const start = new Date(end.getTime() - GSC_DAYS * 86400000);
     const path = new URL(pageUrl).pathname;
-    const res = await fetch(
+    const res = await tfetch(
       `https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(site)}/searchAnalytics/query`,
       {
         method: "POST",
@@ -241,7 +242,7 @@ export async function getGscDaily(): Promise<{ days: GscDay[]; note?: string }> 
     const token = await getAccessToken(creds.client_email, creds.private_key);
     const end = new Date(Date.now() - 2 * 86400000);
     const start = new Date(end.getTime() - GSC_DAYS * 86400000);
-    const res = await fetch(
+    const res = await tfetch(
       `https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(site)}/searchAnalytics/query`,
       {
         method: "POST",
@@ -293,7 +294,7 @@ export async function gscRows(
     const rows: GscRow[] = [];
     const maxPages = opts.maxPages ?? 4;
     for (let p = 0; p < maxPages; p++) {
-      const res = await fetch(
+      const res = await tfetch(
         `https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(site)}/searchAnalytics/query`,
         {
           method: "POST",
@@ -469,7 +470,7 @@ export async function inspectUrl(url: string, auth?: { token: string; site: stri
   const a = auth ?? (await gscAuth());
   if ("error" in a) return { verdict: "ERROR", coverage: "", error: a.error };
   try {
-    const res = await fetch("https://searchconsole.googleapis.com/v1/urlInspection/index:inspect", {
+    const res = await tfetch("https://searchconsole.googleapis.com/v1/urlInspection/index:inspect", {
       method: "POST",
       headers: { Authorization: `Bearer ${a.token}`, "Content-Type": "application/json" },
       body: JSON.stringify({ inspectionUrl: url, siteUrl: a.site, languageCode: "it-IT" }),
@@ -525,7 +526,7 @@ export async function listSitemaps(): Promise<{ sitemaps: SitemapInfo[]; note?: 
   const a = await gscAuth();
   if ("error" in a) return { sitemaps: [], note: a.error };
   try {
-    const res = await fetch(
+    const res = await tfetch(
       `https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(a.site)}/sitemaps`,
       { headers: { Authorization: `Bearer ${a.token}` }, next: { revalidate: 3600 } },
     );
@@ -565,7 +566,7 @@ export async function submitSitemap(path: string): Promise<{ ok: boolean; messag
   try {
     const creds = JSON.parse(raw) as { client_email: string; private_key: string };
     const token = await getAccessToken(creds.client_email, creds.private_key, "https://www.googleapis.com/auth/webmasters");
-    const res = await fetch(
+    const res = await tfetch(
       `https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(site)}/sitemaps/${encodeURIComponent(path)}`,
       { method: "PUT", headers: { Authorization: `Bearer ${token}`, "Content-Length": "0" }, cache: "no-store" },
     );

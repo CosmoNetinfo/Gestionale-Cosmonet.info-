@@ -1,3 +1,4 @@
+import { tfetch } from "./http";
 import { normUrl } from "./gsc";
 
 /**
@@ -44,7 +45,7 @@ export async function saveSnapshot(rows: SnapshotRow[]): Promise<number> {
     const group = batches.slice(i, i + 4);
     const results = await Promise.all(
       group.map((b) =>
-        fetch(`${c.url}/rest/v1/gsc_page_daily?on_conflict=date,page`, {
+        tfetch(`${c.url}/rest/v1/gsc_page_daily?on_conflict=date,page`, {
           method: "POST",
           headers: hdr(c.key, { Prefer: "resolution=merge-duplicates,return=minimal" }),
           body: JSON.stringify(b),
@@ -66,7 +67,7 @@ export async function getPageHistory(pageUrl: string): Promise<HistoryDay[]> {
   if (!c) return [];
   try {
     const page = normUrl(pageUrl);
-    const res = await fetch(
+    const res = await tfetch(
       `${c.url}/rest/v1/gsc_page_daily?select=date,clicks,impressions,position&page=eq.${encodeURIComponent(page)}&order=date.asc&limit=1000`,
       { headers: hdr(c.key), cache: "no-store" },
     );
@@ -83,7 +84,7 @@ export async function historyInfo(): Promise<{ first?: string; last?: string } |
   if (!c) return null;
   try {
     const get = async (order: string) => {
-      const res = await fetch(`${c.url}/rest/v1/gsc_page_daily?select=date&order=date.${order}&limit=1`, {
+      const res = await tfetch(`${c.url}/rest/v1/gsc_page_daily?select=date&order=date.${order}&limit=1`, {
         headers: hdr(c.key),
         cache: "no-store",
       });

@@ -1,3 +1,4 @@
+import { tfetch } from "./http";
 /* eslint-disable @typescript-eslint/no-unused-expressions -- uso dei ternari come istruzioni nei controlli di configurazione */
 import tls from "node:tls";
 import { getAccessToken, gscEndDate, inspectUrl, listSitemaps } from "./gsc";
@@ -181,7 +182,7 @@ async function supabaseChecks(): Promise<Check[]> {
 
   return Promise.all([
     run(G, "Lettura revisioni (article_reviews)", async () => {
-      const res = await fetch(`${c.url}/rest/v1/article_reviews?select=article_id&limit=1`, {
+      const res = await tfetch(`${c.url}/rest/v1/article_reviews?select=article_id&limit=1`, {
         headers: sbH(c.key, { Prefer: "count=exact" }),
         cache: "no-store",
         signal: sig(10000),
@@ -191,7 +192,7 @@ async function supabaseChecks(): Promise<Check[]> {
       return { esito: "ok", dettaglio: `leggibile, ${n ?? "?"} revisioni salvate` };
     }),
     run(G, "Scrittura revisioni (Segna rivisto)", async () => {
-      const post = await fetch(`${c.url}/rest/v1/article_reviews?on_conflict=article_id`, {
+      const post = await tfetch(`${c.url}/rest/v1/article_reviews?on_conflict=article_id`, {
         method: "POST",
         headers: sbH(c.key, { Prefer: "resolution=merge-duplicates,return=minimal" }),
         body: JSON.stringify({ article_id: -1, reviewed_at: new Date().toISOString() }),
@@ -204,7 +205,7 @@ async function supabaseChecks(): Promise<Check[]> {
           ? { esito: "ok", dettaglio: "scrittura consentita (riga di prova rifiutata da un vincolo, normale)" }
           : r;
       }
-      const del = await fetch(`${c.url}/rest/v1/article_reviews?article_id=eq.-1`, {
+      const del = await tfetch(`${c.url}/rest/v1/article_reviews?article_id=eq.-1`, {
         method: "DELETE",
         headers: sbH(c.key),
         cache: "no-store",
@@ -215,13 +216,13 @@ async function supabaseChecks(): Promise<Check[]> {
         : { esito: "warn", dettaglio: "scrittura ok, ma non riesco a cancellare la riga di prova (id -1): innocuo", fix: "Facoltativo: GRANT delete ON public.article_reviews TO service_role;" };
     }),
     run(G, "Note per articolo (article_notes)", async () => {
-      const res = await fetch(`${c.url}/rest/v1/article_notes?select=article_id&limit=1`, { headers: sbH(c.key), cache: "no-store", signal: sig(10000) });
+      const res = await tfetch(`${c.url}/rest/v1/article_notes?select=article_id&limit=1`, { headers: sbH(c.key), cache: "no-store", signal: sig(10000) });
       if (res.ok) return { esito: "ok", dettaglio: "tabella pronta" };
       const r = await sbProblem(res, "article_notes");
       return { ...r, esito: "warn" };
     }),
     run(G, "Storico Search Console (gsc_page_daily)", async () => {
-      const res = await fetch(`${c.url}/rest/v1/gsc_page_daily?select=date&order=date.desc&limit=1`, {
+      const res = await tfetch(`${c.url}/rest/v1/gsc_page_daily?select=date&order=date.desc&limit=1`, {
         headers: sbH(c.key, { Prefer: "count=exact" }),
         cache: "no-store",
         signal: sig(15000),
@@ -265,7 +266,7 @@ async function gscChecks(): Promise<Check[]> {
 
   const rest = await Promise.all([
     run(G, "Permesso sulla proprietà", async () => {
-      const res = await fetch(`https://www.googleapis.com/webmasters/v3/sites/${S}`, { headers: H, cache: "no-store", signal: sig(10000) });
+      const res = await tfetch(`https://www.googleapis.com/webmasters/v3/sites/${S}`, { headers: H, cache: "no-store", signal: sig(10000) });
       if (res.status === 403 || res.status === 404)
         return { esito: "fail", dettaglio: `la proprietà ${site} non è accessibile (${res.status})`, fix: "In Search Console → Impostazioni → Utenti e autorizzazioni aggiungi l'email dell'account di servizio; controlla anche che GSC_SITE sia scritto uguale alla proprietà." };
       if (!res.ok) return { esito: "fail", dettaglio: `errore ${res.status}` };
@@ -276,7 +277,7 @@ async function gscChecks(): Promise<Check[]> {
     run(G, "Dati di ricerca (Search Analytics)", async () => {
       const end = gscEndDate();
       const start = new Date(end.getTime() - 6 * 86400000);
-      const res = await fetch(`https://www.googleapis.com/webmasters/v3/sites/${S}/searchAnalytics/query`, {
+      const res = await tfetch(`https://www.googleapis.com/webmasters/v3/sites/${S}/searchAnalytics/query`, {
         method: "POST",
         headers: { ...H, "Content-Type": "application/json" },
         body: JSON.stringify({ startDate: start.toISOString().slice(0, 10), endDate: end.toISOString().slice(0, 10), dimensions: ["date"], rowLimit: 10 }),
@@ -323,14 +324,14 @@ async function wordpressChecks(): Promise<Check[]> {
 
   return Promise.all([
     run(G, "API REST pubblica", async () => {
-      const res = await fetch(`${base}/wp-json/`, { cache: "no-store", signal: sig(10000) });
+      const res = await tfetch(`${base}/wp-json/`, { cache: "no-store", signal: sig(10000) });
       if (!res.ok) return { esito: "fail", dettaglio: `HTTP ${res.status}`, fix: "L'API REST di WordPress non risponde: un plugin di sicurezza o la cache potrebbero bloccarla." };
       const j = (await res.json()) as { name?: string };
       return { esito: "ok", dettaglio: `risponde (${j.name ?? "sito"})` };
     }),
     run(G, "Accesso con Application Password", async () => {
       if (!H) return { esito: "fail", dettaglio: "WP_USER o WP_APP_PASSWORD mancanti", fix: VERCEL_ENV_FIX };
-      const res = await fetch(`${base}/wp-json/wp/v2/users/me?_fields=id,name`, { headers: H, cache: "no-store", signal: sig(10000) });
+      const res = await tfetch(`${base}/wp-json/wp/v2/users/me?_fields=id,name`, { headers: H, cache: "no-store", signal: sig(10000) });
       if (res.status === 401 || res.status === 403)
         return { esito: "fail", dettaglio: `rifiutato (${res.status})`, fix: "Password applicazione sbagliata/revocata o utente senza permessi. In WordPress: Utenti → Profilo → Password per le applicazioni; poi aggiorna WP_APP_PASSWORD. Se è corretta, un plugin di sicurezza può bloccare l'header Authorization." };
       if (!res.ok) return { esito: "fail", dettaglio: `HTTP ${res.status}` };
@@ -339,7 +340,7 @@ async function wordpressChecks(): Promise<Check[]> {
     }),
     run(G, "Modifica da qui (campi Yoast scrivibili)", async () => {
       if (!H) return { esito: "warn", dettaglio: "salto: mancano le credenziali WordPress" };
-      const res = await fetch(`${base}/wp-json/wp/v2/posts?per_page=1&context=edit&_fields=id,meta`, { headers: H, cache: "no-store", signal: sig(10000) });
+      const res = await tfetch(`${base}/wp-json/wp/v2/posts?per_page=1&context=edit&_fields=id,meta`, { headers: H, cache: "no-store", signal: sig(10000) });
       if (!res.ok) return { esito: "warn", dettaglio: `HTTP ${res.status}` };
       const j = (await res.json()) as { meta?: Record<string, unknown> | unknown[] }[];
       const m = (Array.isArray(j[0]?.meta) ? {} : j[0]?.meta ?? {}) as Record<string, unknown>;
@@ -382,7 +383,7 @@ async function siteChecks(): Promise<Check[]> {
   if (!base) return [];
   const get = async (path: string) => {
     const t0 = Date.now();
-    const res = await fetch(base + path, { cache: "no-store", signal: sig(10000) });
+    const res = await tfetch(base + path, { cache: "no-store", signal: sig(10000) });
     return { res, ms: Date.now() - t0 };
   };
   return Promise.all([
@@ -421,7 +422,7 @@ async function otherChecks(): Promise<Check[]> {
   if (gh || ghUser)
     list.push(
       run(G, "GitHub", async () => {
-        const res = await fetch(gh ? "https://api.github.com/user" : `https://api.github.com/users/${ghUser}`, {
+        const res = await tfetch(gh ? "https://api.github.com/user" : `https://api.github.com/users/${ghUser}`, {
           headers: { Accept: "application/vnd.github+json", "User-Agent": "cosmo-control", ...(gh ? { Authorization: `Bearer ${gh}` } : {}) },
           cache: "no-store",
           signal: sig(10000),
@@ -446,7 +447,7 @@ async function otherChecks(): Promise<Check[]> {
   if (tg)
     list.push(
       run(G, "Telegram bot", async () => {
-        const res = await fetch(`https://api.telegram.org/bot${tg}/getMe`, { cache: "no-store", signal: sig(10000) });
+        const res = await tfetch(`https://api.telegram.org/bot${tg}/getMe`, { cache: "no-store", signal: sig(10000) });
         return res.ok
           ? { esito: "ok", dettaglio: "il bot risponde" }
           : { esito: "fail", dettaglio: `errore ${res.status}`, fix: "TELEGRAM_BOT_TOKEN errato: rigeneralo con @BotFather." };
@@ -464,7 +465,7 @@ async function appChecks(origin: string | null): Promise<Check[]> {
   if (origin) {
     list.push(
       run(G, "Cron protetto da CRON_SECRET", async () => {
-        const res = await fetch(`${origin}/api/cron/gsc-snapshot`, { cache: "no-store", signal: sig(10000), redirect: "manual" });
+        const res = await tfetch(`${origin}/api/cron/gsc-snapshot`, { cache: "no-store", signal: sig(10000), redirect: "manual" });
         if (res.status === 401) return { esito: "ok", dettaglio: "senza chiave risponde 401 (protetto)" };
         if (res.status === 404) return { esito: "fail", dettaglio: "risponde 404: CRON_SECRET non è visibile in questo deploy", fix: "Imposta CRON_SECRET su Vercel e fai Redeploy." };
         return { esito: "fail", dettaglio: `risposta inattesa ${res.status}`, fix: res.status === 200 ? "ATTENZIONE: il cron risponde senza chiave. Copia il report e mandalo a Claude." : "Copia il report e mandalo a Claude." };
@@ -474,7 +475,7 @@ async function appChecks(origin: string | null): Promise<Check[]> {
     if (mcp && mcp.length >= 20)
       list.push(
         run(G, "Server MCP (Claude)", async () => {
-          const res = await fetch(`${origin}/api/mcp/${mcp}`, {
+          const res = await tfetch(`${origin}/api/mcp/${mcp}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
@@ -543,7 +544,7 @@ async function pageChecks(origin: string | null): Promise<Check[]> {
   const one = (path: string) =>
     run(G, path, async () => {
       const t0 = Date.now();
-      const res = await fetch(origin + path, { headers, cache: "no-store", signal: sig(40000), redirect: "manual" });
+      const res = await tfetch(origin + path, { headers, cache: "no-store", signal: sig(40000), redirect: "manual" });
       const ms = Date.now() - t0;
       if (res.status >= 500)
         return { esito: "fail", dettaglio: `errore del server (${res.status}) dopo ${ms} ms`, fix: "Questa pagina si rompe sul server: Vercel → Logs, filtra per questo percorso (oppure chiedi a Claude, che li legge)." };

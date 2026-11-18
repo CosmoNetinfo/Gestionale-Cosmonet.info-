@@ -1,3 +1,4 @@
+import { tfetch } from "./http";
 /**
  * Messaggi del modulo contatti del sito (plugin "CosmoContact + Supabase").
  * Sono su un progetto Supabase DIVERSO da quello del gestionale, quindi servono variabili proprie:
@@ -38,7 +39,7 @@ export async function leggiMessaggi(limite = 100): Promise<{ ok: boolean; messag
   const c = conf();
   if (!c) return { ok: false, messaggi: [], errore: "Non collegato" };
   try {
-    const res = await fetch(`${c.url}/rest/v1/${encodeURIComponent(c.table)}?select=*&order=created_at.desc&limit=${limite}`, {
+    const res = await tfetch(`${c.url}/rest/v1/${encodeURIComponent(c.table)}?select=*&order=created_at.desc&limit=${limite}`, {
       headers: { apikey: c.key, Authorization: `Bearer ${c.key}` },
       cache: "no-store",
     });
@@ -72,7 +73,7 @@ export async function eliminaMessaggio(id: string): Promise<{ ok: boolean; error
   if (!c) return { ok: false, errore: "Non collegato" };
   if (!/^[A-Za-z0-9_-]{1,64}$/.test(id)) return { ok: false, errore: "Identificativo non valido" };
   try {
-    const res = await fetch(`${c.url}/rest/v1/${encodeURIComponent(c.table)}?id=eq.${encodeURIComponent(id)}`, {
+    const res = await tfetch(`${c.url}/rest/v1/${encodeURIComponent(c.table)}?id=eq.${encodeURIComponent(id)}`, {
       method: "DELETE",
       headers: { apikey: c.key, Authorization: `Bearer ${c.key}`, Prefer: "return=representation" },
       cache: "no-store",

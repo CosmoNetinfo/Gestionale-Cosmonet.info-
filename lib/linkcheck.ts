@@ -1,3 +1,4 @@
+import { tfetch } from "./http";
 import { loadArticles } from "./articles";
 /**
  * Controllo di link e immagini negli articoli pubblicati.
@@ -52,7 +53,7 @@ async function loadPage(base: string, page: number, per: number): Promise<{ post
   let res: Response | undefined;
   // Se WordPress risponde 429 (troppe richieste) aspetta un po' e riprova, senza sforare i 60 secondi di Vercel
   for (let attempt = 0; attempt < 3; attempt++) {
-    res = await fetch(`${base}/wp-json/wp/v2/posts?status=publish&per_page=${per}&page=${page}&_fields=id,link,title,content`, {
+    res = await tfetch(`${base}/wp-json/wp/v2/posts?status=publish&per_page=${per}&page=${page}&_fields=id,link,title,content`, {
       cache: "no-store",
       signal: AbortSignal.timeout(20000),
     });
@@ -79,7 +80,7 @@ const BROWSER = {
 };
 
 async function checkUrl(url: string, interno = false): Promise<Check> {
-  const go = async (method: "HEAD" | "GET") => fetch(url, { method, headers: BROWSER, redirect: "follow", signal: AbortSignal.timeout(8000), cache: "no-store" });
+  const go = async (method: "HEAD" | "GET") => tfetch(url, { method, headers: BROWSER, redirect: "follow", signal: AbortSignal.timeout(8000), cache: "no-store" });
   try {
     let res = await go("HEAD");
     // Molti siti rispondono male a HEAD o ai robot: riprovo con GET, che somiglia di più a un browser

@@ -1,3 +1,4 @@
+import { tfetch } from "./http";
 export interface WpPlugin {
   plugin: string;
   name: string;
@@ -29,7 +30,7 @@ export async function getPlugins(): Promise<{ plugins: WpPlugin[]; note?: string
   const a = auth();
   if (!a) return { plugins: [], note: "WordPress non è collegato: mancano WP_BASE_URL, WP_USER e WP_APP_PASSWORD." };
   try {
-    const res = await fetch(`${a.base}/wp-json/wp/v2/plugins?per_page=100`, { headers: a.headers, next: { revalidate: 600 } });
+    const res = await tfetch(`${a.base}/wp-json/wp/v2/plugins?per_page=100`, { headers: a.headers, next: { revalidate: 600 } });
     if (res.status === 401 || res.status === 403) {
       return { plugins: [], note: `WordPress ha rifiutato la richiesta (${res.status}). L'utente della password applicazione deve essere amministratore.` };
     }
@@ -67,7 +68,7 @@ export async function getSnippets(): Promise<{ snippets: WpSnippet[]; note?: str
   const a = auth();
   if (!a) return { snippets: [] };
   try {
-    const res = await fetch(`${a.base}/wp-json/code-snippets/v1/snippets`, { headers: a.headers, next: { revalidate: 600 } });
+    const res = await tfetch(`${a.base}/wp-json/code-snippets/v1/snippets`, { headers: a.headers, next: { revalidate: 600 } });
     if (res.status === 404) {
       return { snippets: [], note: "Nessun elenco di snippet: il plugin Code Snippets non è installato (o non espone la REST API). Gli snippet PHP messi a mano in functions.php o in altri plugin non sono leggibili da fuori." };
     }

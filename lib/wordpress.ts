@@ -1,3 +1,4 @@
+import { tfetch } from "./http";
 import type { Article, Stato } from "./types";
 import { demoArticles } from "./demo";
 
@@ -61,7 +62,7 @@ export async function getArticles(): Promise<ArticlesResult> {
 
   try {
     // Mappa id categoria → nome
-    const catRes = await fetch(
+    const catRes = await tfetch(
       `${base}/wp-json/wp/v2/categories?per_page=100&_fields=id,name`,
       { headers, next: { revalidate: 3600 } },
     );
@@ -74,7 +75,7 @@ export async function getArticles(): Promise<ArticlesResult> {
 
     const articles: Article[] = [];
     const fetchPage = (page: number) =>
-      fetch(
+      tfetch(
         `${base}/wp-json/wp/v2/posts?status=publish,future,draft,pending,trash` +
           `&per_page=100&page=${page}&_fields=id,title,slug,link,status,date,modified,categories`,
         { headers, next: { revalidate: 300 } },
@@ -149,7 +150,7 @@ export async function getArticleContent(
   const user = process.env.WP_USER;
   const pass = process.env.WP_APP_PASSWORD;
   if (!base || !user || !pass) return null;
-  const res = await fetch(
+  const res = await tfetch(
     `${base}/wp-json/wp/v2/posts/${id}?context=edit&_fields=id,title,link,status,content`,
     {
       headers: { Authorization: "Basic " + Buffer.from(`${user}:${pass}`).toString("base64") },

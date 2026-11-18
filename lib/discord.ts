@@ -1,3 +1,4 @@
+import { tfetch } from "./http";
 // Pubblicazione sul server Discord di Cosmonet tramite webhook.
 // Variabile su Vercel: DISCORD_WEBHOOK_URL (webhook del canale). Il canale ideale è un Forum:
 // ogni post diventa un thread dove i lettori possono commentare. Se il canale è di testo normale,
@@ -13,7 +14,7 @@ export async function discordPubblica(p: { titolo?: string; testo: string; link?
   const body: Record<string, unknown> = { content, allowed_mentions: { parse: [] } };
   if (discordForum() && p.titolo) body.thread_name = p.titolo.slice(0, 100);
   try {
-    const r = await fetch(url, {
+    const r = await tfetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),

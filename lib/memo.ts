@@ -1,3 +1,4 @@
+import { tfetch } from "./http";
 /**
  * Lettura di Cosmo Memo in SOLA LETTURA.
  * Richiede che Cosmo Memo esponga GET /api/read-only/summary protetto da un token
@@ -45,7 +46,7 @@ export async function getMemoSummary(): Promise<MemoResult> {
     };
   }
   try {
-    const res = await fetch(`${url}/api/read-only/summary`, {
+    const res = await tfetch(`${url}/api/read-only/summary`, {
       headers: { Authorization: `Bearer ${token}` },
       next: { revalidate: 120 },
     });

@@ -1,3 +1,4 @@
+import { tfetch } from "./http";
 /** Traffico reale letto dai plugin del sito (solo quelli che espongono una REST API). */
 export interface TrafficoPunto {
   date: string; // YYYY-MM-DD
@@ -51,7 +52,7 @@ export async function getKoko(days: number): Promise<{
 
   try {
     const url = `${a.base}/wp-json/koko-analytics/v1/stats?start_date=${iso(from)}&end_date=${iso(end)}&group=day`;
-    const res = await fetch(url, { headers: a.headers, next: { revalidate: 900 } });
+    const res = await tfetch(url, { headers: a.headers, next: { revalidate: 900 } });
     if (res.status === 401 || res.status === 403)
       return { configured: true, ...vuoto, note: `Koko Analytics ha rifiutato la richiesta (${res.status}).` };
     if (res.status === 404)

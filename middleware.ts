@@ -5,6 +5,14 @@ import { NextResponse, type NextRequest } from "next/server";
  * In produzione, senza APP_PASSWORD l'app resta chiusa.
  * In sviluppo, senza APP_PASSWORD è aperta.
  */
+/** Confronto a tempo costante (l'Edge runtime non ha crypto.timingSafeEqual). */
+function uguali(a: string, b: string): boolean {
+  const n = Math.max(a.length, b.length);
+  let diff = a.length ^ b.length;
+  for (let i = 0; i < n; i++) diff |= (a.charCodeAt(i) || 0) ^ (b.charCodeAt(i) || 0);
+  return diff === 0;
+}
+
 export function middleware(req: NextRequest) {
   // Il server MCP si protegge da solo con MCP_TOKEN (nell'indirizzo): Claude non può inserire la password.
   if (req.nextUrl.pathname.startsWith("/api/mcp/")) return NextResponse.next();
@@ -25,7 +33,7 @@ export function middleware(req: NextRequest) {
     try {
       const decoded = atob(header.slice(6));
       const given = decoded.slice(decoded.indexOf(":") + 1);
-      if (given === password) return NextResponse.next();
+      if (uguali(given, password)) return NextResponse.next();
     } catch {
       /* credenziali malformate: si ricade sulla richiesta di accesso */
     }

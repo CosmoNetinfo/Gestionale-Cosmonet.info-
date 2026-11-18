@@ -1,3 +1,4 @@
+import { tfetch } from "./http";
 /**
  * Modifica di titolo, SEO (Yoast), stato e data di un articolo, via REST API di WordPress.
  * Dopo ogni salvataggio rilegge l'articolo e confronta: se WordPress ha ignorato un campo
@@ -45,7 +46,7 @@ export async function leggi(id: number): Promise<{ ok: true; dati: Modificabile;
   const c = cfg();
   if (!c) return { ok: false, errore: "WordPress non è collegato (WP_BASE_URL, WP_USER, WP_APP_PASSWORD)." };
   try {
-    const res = await fetch(`${c.base}/wp-json/wp/v2/posts/${id}?context=edit&_fields=id,title,status,date,meta`, {
+    const res = await tfetch(`${c.base}/wp-json/wp/v2/posts/${id}?context=edit&_fields=id,title,status,date,meta`, {
       headers: c.headers,
       cache: "no-store",
       signal: AbortSignal.timeout(15000),
@@ -110,7 +111,7 @@ export async function salva(
   if (!Object.keys(body).length) return { ok: false, errore: "Non c'è nulla da cambiare." };
 
   try {
-    const res = await fetch(`${c.base}/wp-json/wp/v2/posts/${id}`, {
+    const res = await tfetch(`${c.base}/wp-json/wp/v2/posts/${id}`, {
       method: "POST",
       headers: { ...c.headers, "Content-Type": "application/json" },
       body: JSON.stringify(body),

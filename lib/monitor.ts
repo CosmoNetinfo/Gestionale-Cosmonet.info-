@@ -1,0 +1,142 @@
+import tls from "node:tls";
+import { tfetch } from "./http";
+import { runPagespeed } from "./pagespeed";
+
+/**
+ * Monitor del sito: salva su Supabase (tabella speed_history) velocità e disponibilità,
+ * e confronta con i giorni precedenti per dare gli avvisi.
+ */
+export interface MonitorRow {
+  id?: number;
+  taken_at: string;
+  kind: "mobile" | "desktop" | "uptime";
+  url: string;
+  score: number | null;
+  lcp: number | null;
+  fcp: number | null;
+  cls: number | null;
+  tbt: number | null;
+  http_status: number | null;
+  ttfb_ms: number | null;
+  cert_days: number | null;
+  errore: string | null;
+}
+
+function conf() {
+  const url = process.env.SUPABASE_URL?.replace(/\/$/, "");
+  const key = process.env.SUPABASE_SECRET_KEY;
+  return url && key ? { url, key } : null;
+}
+const hdr = (key: string, extra: Record<string, string> = {}) => ({
+  apikey: key,
+  Authorization: `Bearer ${key}`,
+  "Content-Type": "application/json",
+  ...extra,
+});
+
+export const MONITOR_SQL_HINT =
+  "Manca la tabella speed_history: apri Supabase → SQL Editor e incolla il blocco «Monitor del sito» di supabase/schema.sql.";
+
+export async function saveRows(rows: MonitorRow[]): Promise<{ ok: boolean; errore?: string }> {
+  const c = conf();
+  if (!c) return { ok: false, errore: "Supabase non collegato" };
+  try {
+    const r = await tfetch(`${c.url}/rest/v1/speed_history`, {
+      method: "POST",
+      headers: hdr(c.key, { Prefer: "return=minimal" }),
+      body: JSON.stringify(rows),
+      cache: "no-store",
+    });
+    if (r.ok) return { ok: true };
+    const t = await r.text();
+    return { ok: false, errore: /speed_history|PGRST205|does not exist/i.test(t) ? MONITOR_SQL_HINT : `Supabase ${r.status}: ${t.slice(0, 150)}` };
+  } catch (e) {
+    return { ok: false, errore: (e as Error).message };
+  }
+}
+
+/** Ultime righe di un tipo, dalla più vecchia alla più recente. */
+export async function loadHistory(kind: MonitorRow["kind"], limit = 60): Promise<{ rows: MonitorRow[]; errore?: string }> {
+  const c = conf();
+  if (!c) return { rows: [], errore: "Supabase non collegato" };
+  try {
+    const r = await tfetch(`${c.url}/rest/v1/speed_history?kind=eq.${kind}&order=taken_at.desc&limit=${limit}`, {
+      headers: hdr(c.key),
+      cache: "no-store",
+    });
+    if (!r.ok) {
+      const t = await r.text();
+      return { rows: [], errore: /speed_history|PGRST205|does not exist/i.test(t) ? MONITOR_SQL_HINT : `Supabase ${r.status}` };
+    }
+    const rows = (await r.json()) as MonitorRow[];
+    return { rows: rows.reverse() };
+  } catch (e) {
+    return { rows: [], errore: (e as Error).message };
+  }
+}
+
+function certDays(host: string): Promise<number | null> {
+  return new Promise((resolve) => {
+    try {
+      const s = tls.connect({ host, port: 443, servername: host, timeout: 8000 }, () => {
+        const exp = s.getPeerCertificate()?.valid_to;
+        s.end();
+        resolve(exp ? Math.floor((new Date(exp).getTime() - Date.now()) / 86400000) : null);
+      });
+      s.on("error", () => resolve(null));
+      s.on("timeout", () => {
+        s.destroy();
+        resolve(null);
+      });
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
+/** Controllo veloce di disponibilità: stato HTTP, tempo di prima risposta, certificato. */
+export async function checkUptime(home: string): Promise<MonitorRow> {
+  const row: MonitorRow = { taken_at: new Date().toISOString(), kind: "uptime", url: home, score: null, lcp: null, fcp: null, cls: null, tbt: null, http_status: null, ttfb_ms: null, cert_days: null, errore: null };
+  const t0 = Date.now();
+  try {
+    const r = await fetch(home, { cache: "no-store", redirect: "follow", signal: AbortSignal.timeout(20000), headers: { "User-Agent": "CosmoControl-Monitor/1.0" } });
+    row.ttfb_ms = Date.now() - t0;
+    row.http_status = r.status;
+    await r.body?.cancel();
+  } catch (e) {
+    row.errore = (e as Error).name === "TimeoutError" ? "nessuna risposta entro 20 secondi" : (e as Error).message;
+  }
+  try {
+    row.cert_days = await certDays(new URL(home).hostname);
+  } catch {
+    /* ignorato */
+  }
+  return row;
+}
+
+export async function checkSpeed(home: string, kind: "mobile" | "desktop"): Promise<MonitorRow> {
+  const base = { taken_at: new Date().toISOString(), kind, url: home, http_status: null, ttfb_ms: null, cert_days: null };
+  const r = await runPagespeed(home, kind, Date.now() + 100000);
+  if (!r.ok) return { ...base, score: null, lcp: null, fcp: null, cls: null, tbt: null, errore: r.error ?? "errore PageSpeed" };
+  return { ...base, score: r.score ?? null, lcp: r.lab?.lcp ?? null, fcp: r.lab?.fcp ?? null, cls: r.lab?.cls ?? null, tbt: r.lab?.tbt ?? null, errore: null };
+}
+
+/** Avvisi: confronta le misure di oggi con la media dei giorni precedenti. */
+export async function avvisi(nuove: MonitorRow[]): Promise<string[]> {
+  const out: string[] = [];
+  const up = nuove.find((r) => r.kind === "uptime");
+  if (up) {
+    if (up.errore || (up.http_status ?? 0) >= 400) out.push(`🔴 <b>Il sito non risponde bene</b>: ${up.errore ?? "stato HTTP " + up.http_status}`);
+    else if ((up.ttfb_ms ?? 0) > 3000) out.push(`🐢 Risposta lenta: la home ha impiegato ${(up.ttfb_ms! / 1000).toFixed(1)} s`);
+    if (up.cert_days !== null && up.cert_days <= 14) out.push(`🔐 Il certificato HTTPS scade tra ${up.cert_days} giorni`);
+  }
+  for (const n of nuove.filter((r) => r.kind !== "uptime" && r.score !== null)) {
+    const { rows } = await loadHistory(n.kind, 8);
+    const prev = rows.filter((r) => r.score !== null && r.taken_at < n.taken_at).slice(-7);
+    if (prev.length >= 3) {
+      const media = prev.reduce((s, r) => s + (r.score ?? 0), 0) / prev.length;
+      if (n.score! <= media - 12) out.push(`📉 Velocità ${n.kind}: punteggio ${n.score} (media recente ${Math.round(media)})`);
+    }
+  }
+  return out;
+}

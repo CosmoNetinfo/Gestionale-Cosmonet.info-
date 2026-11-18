@@ -1,3 +1,4 @@
+import { tfetch } from "./http";
 // Collegamento alla pagina Facebook di Cosmonet via Graph API.
 // Variabili su Vercel: FACEBOOK_PAGE_ID, FACEBOOK_PAGE_TOKEN (token della Pagina che non scade).
 // Facoltativa: FACEBOOK_API_VERSION (default v27.0, quella dell'Explorer).
@@ -27,13 +28,13 @@ export async function facebookStato(): Promise<FacebookStato> {
   if (!facebookAttivo()) return { ok: false, errore: "Mancano FACEBOOK_PAGE_ID e FACEBOOK_PAGE_TOKEN" };
   const page = process.env.FACEBOOK_PAGE_ID!.trim();
   try {
-    const r = await fetch(`${BASE()}/${page}?fields=id,name,fan_count`, { headers: auth(), cache: "no-store", signal: AbortSignal.timeout(10000) });
+    const r = await tfetch(`${BASE()}/${page}?fields=id,name,fan_count`, { headers: auth(), cache: "no-store", signal: AbortSignal.timeout(10000) });
     const j = (await r.json()) as { name?: string; fan_count?: number } & GraphErrore;
     if (!r.ok || j.error) return { ok: false, errore: j.error?.message ?? `Facebook ha risposto ${r.status}`, codice: j.error?.code };
     const stato: FacebookStato = { ok: true, nome: j.name, follower: j.fan_count };
     // Scadenza del token (facoltativa: se la richiesta fallisce non è un problema).
     try {
-      const d = await fetch(`${BASE()}/debug_token?input_token=${encodeURIComponent(process.env.FACEBOOK_PAGE_TOKEN!.trim())}`, {
+      const d = await tfetch(`${BASE()}/debug_token?input_token=${encodeURIComponent(process.env.FACEBOOK_PAGE_TOKEN!.trim())}`, {
         headers: auth(),
         cache: "no-store",
         signal: AbortSignal.timeout(8000),
@@ -84,7 +85,7 @@ export async function facebookPubblica(p: { message: string; link?: string; quan
       form.set("scheduled_publish_time", String(p.quando));
     }
     try {
-      const r = await fetch(`${BASE()}/${page}/photos`, { method: "POST", headers: auth(), body: form, cache: "no-store", signal: AbortSignal.timeout(30000) });
+      const r = await tfetch(`${BASE()}/${page}/photos`, { method: "POST", headers: auth(), body: form, cache: "no-store", signal: AbortSignal.timeout(30000) });
       const j = (await r.json()) as { id?: string; post_id?: string } & GraphErrore;
       if (!r.ok || j.error) return { ok: false, errore: j.error?.message ?? `Facebook ha risposto ${r.status}`, codice: j.error?.code };
       return { ok: true, id: j.post_id ?? j.id };
@@ -99,7 +100,7 @@ export async function facebookPubblica(p: { message: string; link?: string; quan
     body.set("scheduled_publish_time", String(p.quando));
   }
   try {
-    const r = await fetch(`${BASE()}/${page}/feed`, {
+    const r = await tfetch(`${BASE()}/${page}/feed`, {
       method: "POST",
       headers: { ...auth(), "Content-Type": "application/x-www-form-urlencoded" },
       body,
@@ -123,7 +124,7 @@ export async function facebookProgrammati(limit = 50): Promise<{ ok: boolean; po
   if (!facebookAttivo()) return { ok: false, post: [], errore: "Facebook non è configurato" };
   const page = process.env.FACEBOOK_PAGE_ID!.trim();
   try {
-    const r = await fetch(`${BASE()}/${page}/scheduled_posts?fields=${encodeURIComponent("id,message,scheduled_publish_time,full_picture")}&limit=${limit}`, {
+    const r = await tfetch(`${BASE()}/${page}/scheduled_posts?fields=${encodeURIComponent("id,message,scheduled_publish_time,full_picture")}&limit=${limit}`, {
       headers: auth(),
       cache: "no-store",
       signal: AbortSignal.timeout(15000),
@@ -157,7 +158,7 @@ export async function facebookEliminaProgrammato(id: string): Promise<{ ok: bool
   if (!elenco.ok) return { ok: false, errore: elenco.errore, codice: elenco.codice };
   if (!elenco.post.some((p) => p.id === id)) return { ok: false, errore: "Questo post non è tra quelli programmati: non lo cancello" };
   try {
-    const r = await fetch(`${BASE()}/${id}`, { method: "DELETE", headers: auth(), cache: "no-store", signal: AbortSignal.timeout(15000) });
+    const r = await tfetch(`${BASE()}/${id}`, { method: "DELETE", headers: auth(), cache: "no-store", signal: AbortSignal.timeout(15000) });
     const j = (await r.json()) as { success?: boolean } & GraphErrore;
     if (!r.ok || j.error) return { ok: false, errore: j.error?.message ?? `Facebook ha risposto ${r.status}`, codice: j.error?.code };
     return { ok: j.success !== false };
@@ -197,7 +198,7 @@ export async function facebookAttivita(limit = 12): Promise<{ ok: boolean; post:
     "comments.limit(10).order(reverse_chronological).summary(total_count){id,message,from{name},created_time,permalink_url}",
   ].join(",");
   try {
-    const r = await fetch(`${BASE()}/${page}/posts?fields=${encodeURIComponent(fields)}&limit=${limit}`, { headers: auth(), cache: "no-store", signal: AbortSignal.timeout(15000) });
+    const r = await tfetch(`${BASE()}/${page}/posts?fields=${encodeURIComponent(fields)}&limit=${limit}`, { headers: auth(), cache: "no-store", signal: AbortSignal.timeout(15000) });
     const j = (await r.json()) as {
       data?: {
         id: string;
@@ -226,7 +227,7 @@ export async function facebookAttivita(limit = 12): Promise<{ ok: boolean; post:
     await Promise.all(
       post.slice(0, 8).map(async (p) => {
         try {
-          const ir = await fetch(`${BASE()}/${p.id}/insights?metric=post_total_media_view_unique,post_media_view`, { headers: auth(), cache: "no-store", signal: AbortSignal.timeout(8000) });
+          const ir = await tfetch(`${BASE()}/${p.id}/insights?metric=post_total_media_view_unique,post_media_view`, { headers: auth(), cache: "no-store", signal: AbortSignal.timeout(8000) });
           const ij = (await ir.json()) as { data?: { name: string; values?: { value?: number }[] }[] };
           for (const m of ij.data ?? []) {
             const v = m.values?.[0]?.value;
@@ -248,7 +249,7 @@ export async function facebookRispondi(commentId: string, message: string): Prom
   if (!facebookAttivo()) return { ok: false, errore: "Facebook non è configurato" };
   if (!/^[0-9_]+$/.test(commentId)) return { ok: false, errore: "ID commento non valido" };
   try {
-    const r = await fetch(`${BASE()}/${commentId}/comments`, {
+    const r = await tfetch(`${BASE()}/${commentId}/comments`, {
       method: "POST",
       headers: { ...auth(), "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({ message }),

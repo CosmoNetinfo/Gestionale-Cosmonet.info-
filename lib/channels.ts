@@ -1,3 +1,4 @@
+import { tfetch } from "./http";
 /**
  * Canali della community. Si mostra solo ciò che si può misurare in modo ufficiale.
  *  - Discord: invito pubblico (DISCORD_INVITE, solo il codice) → iscritti e online, senza token.
@@ -20,7 +21,7 @@ async function discord(): Promise<ChannelInfo> {
     return { key: "discord", nome: "Discord", stato: "non-collegato", dettaglio: "Manca DISCORD_INVITE (il codice del link d'invito, per esempio abc123)." };
   }
   try {
-    const res = await fetch(`https://discord.com/api/v10/invites/${encodeURIComponent(code)}?with_counts=true`, {
+    const res = await tfetch(`https://discord.com/api/v10/invites/${encodeURIComponent(code)}?with_counts=true`, {
       next: { revalidate: 600 },
     });
     if (!res.ok) return { key: "discord", nome: "Discord", stato: "errore", dettaglio: `Discord ha risposto con errore ${res.status}: l'invito è scaduto o non valido?` };
@@ -58,8 +59,8 @@ async function telegram(key: string, nome: string, envChat: string, ricorda: str
   try {
     const base = `https://api.telegram.org/bot${token}`;
     const [count, info] = await Promise.all([
-      fetch(`${base}/getChatMemberCount?chat_id=${encodeURIComponent(chat)}`, { next: { revalidate: 600 } }),
-      fetch(`${base}/getChat?chat_id=${encodeURIComponent(chat)}`, { next: { revalidate: 600 } }),
+      tfetch(`${base}/getChatMemberCount?chat_id=${encodeURIComponent(chat)}`, { next: { revalidate: 600 } }),
+      tfetch(`${base}/getChat?chat_id=${encodeURIComponent(chat)}`, { next: { revalidate: 600 } }),
     ]);
     const c = (await count.json()) as { ok: boolean; result?: number; description?: string };
     if (!c.ok) return { key, nome, stato: "errore", dettaglio: c.description ?? "Errore Telegram" };

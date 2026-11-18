@@ -74,3 +74,24 @@ language sql security definer set search_path = public, storage as $$
 $$;
 revoke all on function public.cosmo_db_stato() from public, anon, authenticated;
 grant execute on function public.cosmo_db_stato() to service_role;
+
+-- Monitor del sito: una riga al giorno per controllo (velocità mobile/desktop e disponibilità).
+create table if not exists public.speed_history (
+  id          bigserial primary key,
+  taken_at    timestamptz not null default now(),
+  kind        text not null,            -- mobile | desktop | uptime
+  url         text not null,
+  score       integer,                  -- punteggio Prestazioni (mobile/desktop)
+  lcp         real,                     -- secondi
+  fcp         real,                     -- secondi
+  cls         real,
+  tbt         real,                     -- millisecondi
+  http_status integer,                  -- solo uptime
+  ttfb_ms     integer,                  -- solo uptime
+  cert_days   integer,                  -- giorni alla scadenza del certificato (solo uptime)
+  errore      text
+);
+create index if not exists speed_history_kind_idx on public.speed_history (kind, taken_at desc);
+alter table public.speed_history enable row level security;
+grant all on table public.speed_history to service_role;
+grant usage, select on sequence public.speed_history_id_seq to service_role;

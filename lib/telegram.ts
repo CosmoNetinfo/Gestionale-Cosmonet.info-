@@ -1,3 +1,4 @@
+import { tfetch } from "./http";
 /**
  * Bot Telegram (solo invio). Variabili: TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID.
  */
@@ -14,7 +15,7 @@ export async function sendTelegram(text: string): Promise<{ ok: boolean; message
   if (!token) return { ok: false, message: "Manca TELEGRAM_BOT_TOKEN" };
   if (!chat) return { ok: false, message: "Manca TELEGRAM_CHAT_ID" };
   try {
-    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    const res = await tfetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ chat_id: chat, text: text.slice(0, 4000), parse_mode: "HTML", disable_web_page_preview: true }),
@@ -34,7 +35,7 @@ export async function detectChat(): Promise<{ id?: string; name?: string; note?:
   const token = process.env.TELEGRAM_BOT_TOKEN?.trim();
   if (!token) return { note: "Manca TELEGRAM_BOT_TOKEN" };
   try {
-    const res = await fetch(`https://api.telegram.org/bot${token}/getUpdates`, { cache: "no-store", signal: AbortSignal.timeout(10000) });
+    const res = await tfetch(`https://api.telegram.org/bot${token}/getUpdates`, { cache: "no-store", signal: AbortSignal.timeout(10000) });
     if (!res.ok) return { note: res.status === 401 ? "Token non valido: ricontrolla TELEGRAM_BOT_TOKEN" : `Telegram errore ${res.status}` };
     const list =
       ((await res.json()) as { result?: { message?: { chat?: { id: number; first_name?: string; title?: string } } }[] }).result ?? [];

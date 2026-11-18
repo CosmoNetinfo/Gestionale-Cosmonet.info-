@@ -1,3 +1,4 @@
+import { tfetch } from "./http";
 // Storico dei post social pubblicati da Cosmo Control (tabella social_posts su Supabase).
 import { discordForum, discordPubblica, discordPubblicaAttivo } from "./discord";
 import { facebookAttivo, facebookPubblica } from "./facebook";
@@ -17,7 +18,7 @@ export async function storicoSocial(limit = 60): Promise<{ items: PostSocial[]; 
   const c = conf();
   if (!c) return { items: [], missing: "Supabase non collegato" };
   try {
-    const res = await fetch(`${c.url}/rest/v1/social_posts?select=*&order=created_at.desc&limit=${limit}`, { headers: hdr(c.key), cache: "no-store", signal: AbortSignal.timeout(8000) });
+    const res = await tfetch(`${c.url}/rest/v1/social_posts?select=*&order=created_at.desc&limit=${limit}`, { headers: hdr(c.key), cache: "no-store", signal: AbortSignal.timeout(8000) });
     if (!res.ok) return { items: [], missing: res.status === 404 ? "tabella social_posts non creata (vedi supabase/schema.sql)" : `errore ${res.status}` };
     return { items: (await res.json()) as PostSocial[] };
   } catch (e) {
@@ -30,7 +31,7 @@ export async function giaPubblicato(link: string): Promise<boolean> {
   const c = conf();
   if (!c || !link) return false;
   try {
-    const res = await fetch(`${c.url}/rest/v1/social_posts?select=canali&link=eq.${encodeURIComponent(link)}&limit=10`, { headers: hdr(c.key), cache: "no-store", signal: AbortSignal.timeout(8000) });
+    const res = await tfetch(`${c.url}/rest/v1/social_posts?select=canali&link=eq.${encodeURIComponent(link)}&limit=10`, { headers: hdr(c.key), cache: "no-store", signal: AbortSignal.timeout(8000) });
     if (!res.ok) return false;
     return ((await res.json()) as { canali: EsitoCanale[] }[]).some((r) => r.canali.some((x) => x.ok));
   } catch {
@@ -43,7 +44,7 @@ export async function registraSocial(p: { testo: string; link?: string; canali: 
   const c = conf();
   if (!c) return;
   try {
-    await fetch(`${c.url}/rest/v1/social_posts`, {
+    await tfetch(`${c.url}/rest/v1/social_posts`, {
       method: "POST",
       headers: hdr(c.key, { Prefer: "return=minimal" }),
       body: JSON.stringify({ testo: p.testo, link: p.link ?? null, canali: p.canali }),
