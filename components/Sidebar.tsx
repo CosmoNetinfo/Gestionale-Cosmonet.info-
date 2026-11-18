@@ -139,8 +139,13 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      <div className="border-t border-line px-6 py-3 text-sm text-muted">
-        Uso personale
+      <div className="flex items-center justify-between border-t border-line px-6 py-3 text-sm text-muted">
+        <span>Uso personale</span>
+        <form method="post" action="/api/logout">
+          <button type="submit" className="font-medium hover:text-primary">
+            Esci
+          </button>
+        </form>
       </div>
     </aside>
   );
