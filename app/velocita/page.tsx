@@ -145,7 +145,7 @@ export default async function Velocita({ searchParams }: { searchParams?: { s?: 
                       ))}
                       <td className="whitespace-nowrap px-5 py-2.5">
                         {dec(r.lab.lcp)} s{" "}
-                        {lcp && <Badge tone={catTone(lcp.category)}>utenti {dec(lcp.value)} s</Badge>}
+                        {lcp && <Badge tone={catTone(lcp.category)}>utenti {dec(lcp.value / 1000)} s</Badge>}
                       </td>
                       <td className="whitespace-nowrap px-5 py-2.5">
                         {dec(r.lab.cls, 2)} {cls && <Badge tone={catTone(cls.category)}>utenti {dec(cls.value, 2)}</Badge>}

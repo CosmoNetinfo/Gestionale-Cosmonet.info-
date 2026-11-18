@@ -107,7 +107,7 @@ type Audit = {
   metricSavings?: Record<string, number>;
 };
 type Cat = { percentile?: number; category?: string; distributions?: { min?: number; max?: number; proportion?: number }[] };
-type Loading = { metrics?: Record<string, Cat>; overall_category?: string };
+type Loading = { metrics?: Record<string, Cat>; overall_category?: string; origin_fallback?: boolean };
 type Psi = {
   id?: string;
   loadingExperience?: Loading;
@@ -290,7 +290,9 @@ export async function runPagespeed(url: string, strategy: Strategy, deadline?: n
       scores,
       lab: { lcp: v("lcp") / 1000, cls: v("cls"), tbt: v("tbt"), fcp: v("fcp") / 1000, si: v("si") / 1000 },
       labMetrics,
-      field: fieldSet(j.loadingExperience),
+      // Se Google non ha abbastanza visite su questa pagina, nella «pagina» mette i dati di tutto il sito:
+      // li togliamo, perché sono già mostrati come «origine» e confonderebbero i due livelli.
+      field: j.loadingExperience?.origin_fallback ? undefined : fieldSet(j.loadingExperience),
       origin: fieldSet(j.originLoadingExperience),
       audits: parseAudits(j),
       resources: parseResources(a),
