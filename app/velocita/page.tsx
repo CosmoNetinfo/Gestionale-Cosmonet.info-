@@ -3,6 +3,7 @@ import { loadArticles } from "@/lib/articles";
 import { getGscStats, normUrl } from "@/lib/gsc";
 import { pagespeedConfigured, runMany, type FieldMetric, type Strategy } from "@/lib/pagespeed";
 import { Badge, Card, DemoBanner, Kpi, PageHeader } from "@/components/ui";
+import SpeedDetail from "@/components/SpeedDetail";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -17,20 +18,20 @@ function catTone(c: FieldMetric["category"] | undefined): "ok" | "warn" | "dange
   return c === "FAST" ? "ok" : c === "AVERAGE" ? "warn" : c === "SLOW" ? "danger" : "neutral";
 }
 
-export default async function Velocita({ searchParams }: { searchParams?: { s?: string; url?: string } }) {
+export default async function Velocita({ searchParams }: { searchParams?: { s?: string; url?: string; d?: string; fresh?: string } }) {
   const strategy: Strategy = searchParams?.s === "desktop" ? "desktop" : "mobile";
   const base = process.env.WP_BASE_URL?.replace(/\/$/, "") ?? "https://www.cosmonet.info";
 
   const header = (
     <PageHeader
       title="Velocità"
-      subtitle="PageSpeed e Core Web Vitals: home e i 4 articoli che portano più click"
+      subtitle="PageSpeed completo: punteggi, misure, visitatori reali e cosa sistemare. Home e i 4 articoli che portano più click"
       right={
         <div className="flex gap-2 text-sm">
           {(["mobile", "desktop"] as const).map((x) => (
             <Link
               key={x}
-              href={`/velocita?s=${x}`}
+              href={`/velocita?s=${x}${searchParams?.url ? `&url=${encodeURIComponent(searchParams.url)}` : ""}`}
               className={
                 "rounded-lg border px-3 py-2 " +
                 (strategy === x ? "border-primary bg-primary text-white" : "border-line text-muted hover:text-ink")
@@ -39,6 +40,12 @@ export default async function Velocita({ searchParams }: { searchParams?: { s?: 
               {x === "mobile" ? "Mobile" : "Desktop"}
             </Link>
           ))}
+          <Link
+            href={`/velocita?s=${strategy}&fresh=1${searchParams?.url ? `&url=${encodeURIComponent(searchParams.url)}` : ""}`}
+            className="rounded-lg border border-line px-3 py-2 text-muted hover:text-ink"
+          >
+            Misura di nuovo
+          </Link>
         </div>
       }
     />
@@ -70,9 +77,10 @@ export default async function Velocita({ searchParams }: { searchParams?: { s?: 
   const custom = searchParams?.url && /^https?:\/\//.test(searchParams.url) ? searchParams.url : null;
   if (custom && !titles.has(custom)) titles.set(custom, { title: "Indirizzo scelto" });
 
-  const results = await runMany(Array.from(titles.keys()), strategy);
+  const results = await runMany(Array.from(titles.keys()), strategy, searchParams?.fresh === "1");
+  const wanted = searchParams?.d && titles.has(searchParams.d) ? searchParams.d : custom && titles.has(custom) ? custom : base + "/";
+  const selected = results.find((r) => r.url === wanted && r.ok) ?? results.find((r) => r.ok);
   const okRes = results.filter((r) => r.ok);
-  const err = results.find((r) => !r.ok)?.error;
   const media = okRes.length ? Math.round(okRes.reduce((s, r) => s + (r.score ?? 0), 0) / okRes.length) : 0;
   const mediaTone: "default" | "warn" | "ok" = !okRes.length ? "default" : media >= 90 ? "ok" : "warn";
   const lenti = okRes.filter((r) => (r.score ?? 0) < 50).length;
@@ -81,7 +89,11 @@ export default async function Velocita({ searchParams }: { searchParams?: { s?: 
   return (
     <>
       {header}
-      {err && <DemoBanner title="Attenzione." reason={err} />}
+      {results
+        .filter((r) => !r.ok)
+        .map((r) => (
+          <DemoBanner key={r.url} title={`${titles.get(r.url)?.title ?? r.url}:`} reason={r.error ?? "errore"} />
+        ))}
 
       <div className="grid grid-cols-3 gap-5">
         <Kpi label="Punteggio medio" value={okRes.length ? media : "—"} hint={`su ${okRes.length} pagine (${strategy})`} tone={mediaTone} />
@@ -94,7 +106,10 @@ export default async function Velocita({ searchParams }: { searchParams?: { s?: 
           <thead className="border-b border-line bg-canvas text-xs uppercase tracking-wide text-muted">
             <tr>
               <th className="px-5 py-3 font-medium">Pagina</th>
-              <th className="px-5 py-3 font-medium">Punteggio</th>
+              <th className="px-5 py-3 font-medium">Prestazioni</th>
+              <th className="px-5 py-3 font-medium">Access.</th>
+              <th className="px-5 py-3 font-medium">Best pr.</th>
+              <th className="px-5 py-3 font-medium">SEO</th>
               <th className="px-5 py-3 font-medium">LCP</th>
               <th className="px-5 py-3 font-medium">CLS</th>
               <th className="px-5 py-3 font-medium">INP (utenti)</th>
@@ -110,15 +125,24 @@ export default async function Velocita({ searchParams }: { searchParams?: { s?: 
               return (
                 <tr key={r.url} className="hover:bg-canvas/60">
                   <td className="max-w-sm px-5 py-2.5">
+                    <Link
+                      href={`/velocita?s=${strategy}&d=${encodeURIComponent(r.url)}${custom ? `&url=${encodeURIComponent(custom)}` : ""}#dettaglio`}
+                      className={"line-clamp-1 font-medium hover:text-primary " + (selected?.url === r.url ? "text-primary" : "")}
+                    >
+                      {t.title}
+                    </Link>
                     {t.id ? (
-                      <Link href={`/sito/${t.id}`} className="line-clamp-1 font-medium hover:text-primary">{t.title}</Link>
-                    ) : (
-                      <span className="font-medium">{t.title}</span>
-                    )}
+                      <Link href={`/sito/${t.id}`} className="text-xs text-muted hover:text-primary">scheda articolo</Link>
+                    ) : null}
                   </td>
                   {r.ok && r.lab ? (
                     <>
                       <td className="px-5 py-2.5"><Badge tone={scoreTone(r.score ?? 0)}>{r.score}</Badge></td>
+                      {(["accessibility", "best-practices", "seo"] as const).map((c) => (
+                        <td key={c} className="px-5 py-2.5">
+                          {r.scores?.[c] !== undefined ? <Badge tone={scoreTone(r.scores[c] ?? 0)}>{r.scores[c]}</Badge> : <span className="text-muted">—</span>}
+                        </td>
+                      ))}
                       <td className="whitespace-nowrap px-5 py-2.5">
                         {dec(r.lab.lcp)} s{" "}
                         {lcp && <Badge tone={catTone(lcp.category)}>utenti {dec(lcp.value)} s</Badge>}
@@ -132,7 +156,7 @@ export default async function Velocita({ searchParams }: { searchParams?: { s?: 
                       <td className="whitespace-nowrap px-5 py-2.5 text-muted">{Math.round(r.lab.tbt)} ms</td>
                     </>
                   ) : (
-                    <td colSpan={5} className="px-5 py-2.5 text-xs text-muted">Non disponibile</td>
+                    <td colSpan={8} className="px-5 py-2.5 text-xs text-muted">Non disponibile: {r.error ?? "nessun dato"}</td>
                   )}
                 </tr>
               );
@@ -141,7 +165,9 @@ export default async function Velocita({ searchParams }: { searchParams?: { s?: 
         </table>
       </Card>
 
-      <Card className="mt-5">
+      {selected && <SpeedDetail r={selected} title={titles.get(selected.url)?.title ?? selected.url} />}
+
+      <Card className="mt-10">
         <h2 className="mb-2 text-base font-semibold">Controlla un altro indirizzo</h2>
         <form className="flex gap-2" action="/velocita">
           <input type="hidden" name="s" value={strategy} />
@@ -157,7 +183,7 @@ export default async function Velocita({ searchParams }: { searchParams?: { s?: 
         </form>
         <p className="mt-3 text-xs text-muted">
           Valori buoni per Google: LCP sotto 2,5 s, CLS sotto 0,1, INP sotto 200 ms. «Utenti» sono i dati reali di
-          Chrome degli ultimi 28 giorni (mancano per le pagine con poco traffico). I risultati restano in cache 6 ore.
+          Chrome degli ultimi 28 giorni (mancano per le pagine con poco traffico). I risultati restano in cache 6 ore: dopo una modifica al sito usa «Misura di nuovo» per ignorare la cache.
         </p>
       </Card>
     </>

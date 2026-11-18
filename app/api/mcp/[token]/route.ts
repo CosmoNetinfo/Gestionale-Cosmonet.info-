@@ -6,6 +6,7 @@ import { getGscStats, getPageQueries, normUrl, opportunity } from "@/lib/gsc";
 import { daysSince, daysSinceTouched, isToReview, reviewDays } from "@/lib/review";
 import { markReviewed, supabaseConfigured } from "@/lib/supabase";
 import { runDiagnostics } from "@/lib/diagnostics";
+import { runPagespeed } from "@/lib/pagespeed";
 import { revisionImpact, segments, siteQueries } from "@/lib/insights";
 import { getNote, saveNote } from "@/lib/notes";
 import { getNews, getQueue, queueUpsert } from "@/lib/news";
@@ -213,6 +214,19 @@ const TOOLS = [
     inputSchema: { type: "object", properties: { a: { type: "string" }, oggetto: { type: "string" }, testo: { type: "string" }, conferma: { type: "boolean" } }, required: ["a", "oggetto", "testo", "conferma"] },
   },
   {
+    name: "pagespeed",
+    description:
+      "Misura una pagina con PageSpeed Insights e restituisce TUTTO: i 4 punteggi (prestazioni, accessibilità, best practice, SEO), le misure di laboratorio, i dati reali dei visitatori (pagina e intero sito), il peso della pagina e, per ogni categoria, i controlli non superati con i risparmi stimati. Solo lettura; può richiedere fino a 55 secondi. Se Google è lento riprova. url è facoltativo (default: home del sito); strategia: mobile (default) o desktop; nuova=true ignora la cache di 6 ore.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        url: { type: "string", description: "Indirizzo completo, default la home" },
+        strategia: { type: "string", description: "mobile (default) oppure desktop" },
+        nuova: { type: "boolean", description: "true = ignora la cache e misura di nuovo" },
+      },
+    },
+  },
+  {
     name: "run_diagnostics",
     description:
       "Esegue il controllo Debug del gestionale (variabili, Supabase, Search Console, WordPress, sito, cron, MCP) e restituisce problemi e avvisi con la causa e come sistemarli. Con completo=true misura anche PageSpeed.",
@@ -370,6 +384,12 @@ async function callTool(name: string, args: Record<string, unknown>): Promise<un
       const testo = String(args.testo ?? "");
       if (/\*\*|^#{1,6}\s/m.test(testo)) throw new Error("Il testo contiene markdown (asterischi o #): toglilo");
       return await inviaRisposta({ a: String(args.a ?? ""), oggetto: String(args.oggetto ?? ""), testo });
+    }
+    case "pagespeed": {
+      const base = process.env.WP_BASE_URL?.replace(/\/$/, "") ?? "https://www.cosmonet.info";
+      const url = typeof args.url === "string" && /^https?:\/\//.test(args.url.trim()) ? args.url.trim() : base + "/";
+      const strategy = args.strategia === "desktop" ? "desktop" : "mobile";
+      return await runPagespeed(url, strategy, undefined, args.nuova === true);
     }
     case "run_diagnostics": {
       const r = await runDiagnostics({ origin: null, full: args.completo === true });

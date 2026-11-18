@@ -148,8 +148,12 @@ const G: Record<string, Guida> = {
   },
   "/velocita": {
     titolo: "Velocità",
-    cosa: "PageSpeed e Core Web Vitals della home e dei 4 articoli che portano più click.",
-    azioni: ["Guarda i punteggi per mobile.", "Intervieni su immagini pesanti o plugin lenti."],
+    cosa: "PageSpeed completo della home e dei 4 articoli che portano più click: i 4 punteggi, le misure, i visitatori reali e cosa sistemare.",
+    azioni: [
+      "Clicca il nome di una pagina in tabella per aprire tutto il dettaglio sotto.",
+      "Guarda prima i «Visitatori reali»: sono i dati che contano per Google.",
+      "Dopo una modifica al sito usa «Misura di nuovo» per ignorare la cache di 6 ore.",
+    ],
   },
   "/memo": {
     titolo: "Cosmo Memo",
