@@ -223,8 +223,8 @@ export async function controlloLink(): Promise<string[]> {
   const pagina = (giorno % Math.max(1, prima.pagine)) + 1;
   const r = pagina === 1 ? prima : await scanBatch(pagina, 25, 30000);
   const out: string[] = [];
-  for (const b of r.rotti.slice(0, 6)) out.push(`⛓ Link rotto (${b.status}) in «${b.title}»: ${b.url}`);
-  if (r.rotti.length > 6) out.push(`… e altri ${r.rotti.length - 6} link rotti in questo blocco`);
+  for (const b of r.rotti) out.push(`⛓ «${b.title}» (ID ${b.articleId}): ${b.url} → ${b.status}`);
+  if (out.length) out.push(`ℹ️ Scansione a rotazione: blocco ${pagina} di ${r.pagine} (25 articoli al giorno, ${r.controllati} link controllati)`);
   return out;
 }
 

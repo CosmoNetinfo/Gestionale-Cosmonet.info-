@@ -30,6 +30,27 @@ export async function sendTelegram(text: string): Promise<{ ok: boolean; message
   }
 }
 
+/** Invia un testo lungo spezzandolo a righe intere (limite Telegram: 4096 caratteri per messaggio). */
+export async function sendTelegramLong(text: string, max = 3800): Promise<{ ok: boolean; message: string; parti: number }> {
+  const parti: string[] = [];
+  let cur = "";
+  for (const riga of text.split("\n")) {
+    if (cur && cur.length + riga.length + 1 > max) {
+      parti.push(cur);
+      cur = "";
+    }
+    cur += (cur ? "\n" : "") + riga.slice(0, max);
+  }
+  if (cur) parti.push(cur);
+  let last: { ok: boolean; message: string } = { ok: false, message: "Nessun testo" };
+  for (let i = 0; i < parti.length; i++) {
+    const parte = parti[i];
+    last = await sendTelegram(parti.length > 1 ? `${parte}\n<i>(parte ${i + 1} di ${parti.length})</i>` : parte);
+    if (!last.ok) break;
+  }
+  return { ...last, parti: parti.length };
+}
+
 /** Trova la chat a cui il bot ha ricevuto l'ultimo messaggio (serve per scoprire TELEGRAM_CHAT_ID). */
 export async function detectChat(): Promise<{ id?: string; name?: string; note?: string }> {
   const token = process.env.TELEGRAM_BOT_TOKEN?.trim();
