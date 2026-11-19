@@ -2,16 +2,17 @@ import Link from "next/link";
 import { runDiagnostics, type Esito } from "@/lib/diagnostics";
 import { loadHistory } from "@/lib/monitor";
 import { Badge, Card, PageHeader } from "@/components/ui";
+import { RimandaReport } from "@/components/RimandaReport";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 const peso: Record<Esito, number> = { ok: 0, info: 0, warn: 1, fail: 2 };
 const tono = (e: number) => (e === 2 ? "danger" : e === 1 ? "warn" : "ok") as "danger" | "warn" | "ok";
 const nomeTono = (e: number) => (e === 2 ? "Problema" : e === 1 ? "Attenzione" : "Tutto ok");
 
 /** Un solo sguardo su tutto: un semaforo per ogni area e le ultime misure del monitor. */
-export default async function Stato360() {
+export default async function Stato360({ searchParams }: { searchParams?: { rep?: string; m?: string } }) {
   const [diag, up, mob, art, ctl] = await Promise.all([
     runDiagnostics({ origin: null, full: false }),
     loadHistory("uptime", 1),
@@ -37,7 +38,19 @@ export default async function Stato360() {
 
   return (
     <>
-      <PageHeader title="Stato 360" subtitle="Tutto Cosmonet in un colpo d'occhio: sito, velocità, Google, collegamenti" />
+      <PageHeader
+        title="Stato 360"
+        subtitle="Tutto Cosmonet in un colpo d'occhio: sito, velocità, Google, collegamenti"
+        right={<RimandaReport />}
+      />
+      {searchParams?.rep === "ok" && (
+        <div className="mb-4 rounded-lg border border-line bg-white p-3 text-sm">✅ Report rimandato su Telegram.</div>
+      )}
+      {searchParams?.rep === "errore" && (
+        <div className="mb-4 rounded-lg border border-line bg-white p-3 text-sm">
+          ⚠️ Non sono riuscito a inviare il report{searchParams.m ? `: ${searchParams.m}` : "."}
+        </div>
+      )}
 
       <Card>
         <div className="flex items-center justify-between">
