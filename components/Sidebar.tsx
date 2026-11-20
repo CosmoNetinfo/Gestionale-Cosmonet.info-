@@ -63,7 +63,7 @@ const sezioni: { titolo: string; voci: { href: string; label: string; icon: stri
   },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ aperto = false, onChiudi }: { aperto?: boolean; onChiudi?: () => void }) {
   const pathname = usePathname();
   // Voce attiva = quella con il percorso più lungo che corrisponde (così «Facebook» non resta acceso su «Commenti FB»)
   const tutte = sezioni.flatMap((s) => s.voci.map((v) => v.href));
@@ -74,8 +74,10 @@ export default function Sidebar() {
 
   return (
     <aside
-      className="sticky top-0 flex h-screen shrink-0 flex-col border-r border-line bg-surface"
-      style={{ width: "var(--sidebar-width)" }}
+      className={
+        "fixed inset-y-0 left-0 z-40 flex h-screen w-[min(var(--sidebar-width),85vw)] shrink-0 flex-col border-r border-line bg-surface transition-transform duration-200 lg:sticky lg:top-0 lg:z-auto lg:w-[var(--sidebar-width)] lg:translate-x-0 " +
+        (aperto ? "translate-x-0" : "-translate-x-full")
+      }
     >
       <div className="flex items-center gap-3 px-6 py-4">
         <svg viewBox="0 0 512 512" className="h-9 w-9 shrink-0" role="img" aria-label="Cosmo Control">
@@ -99,6 +101,14 @@ export default function Sidebar() {
           <div className="text-lg font-bold text-ink">Cosmo Control</div>
           <div className="text-sm text-muted">cosmonet.info</div>
         </div>
+        <button
+          type="button"
+          onClick={onChiudi}
+          aria-label="Chiudi il menu"
+          className="ml-auto flex h-10 w-10 items-center justify-center rounded-lg border border-line text-lg text-muted lg:hidden"
+        >
+          ✕
+        </button>
       </div>
 
       <button
@@ -107,7 +117,7 @@ export default function Sidebar() {
         className="mx-3 mb-2 flex items-center justify-between rounded-lg border border-line px-3 py-2 text-[15px] font-medium text-muted hover:border-primary hover:text-primary"
       >
         <span>Cerca…</span>
-        <span className="text-xs">⌘K</span>
+        <span className="hidden text-xs lg:inline">⌘K</span>
       </button>
 
       <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 pb-2">

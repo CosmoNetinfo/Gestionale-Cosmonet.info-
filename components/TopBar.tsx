@@ -30,12 +30,12 @@ export default function TopBar() {
 
   return (
     <div className="mb-4 flex flex-col items-end gap-3">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-2">
         <button type="button" className={btn} onClick={() => window.dispatchEvent(new Event("cc-open-search"))}>
-          ⌕ Cerca <span className="ml-1 text-xs">⌘K</span>
+          ⌕ Cerca <span className="ml-1 hidden text-xs lg:inline">⌘K</span>
         </button>
         <button type="button" className={btn} aria-expanded={aperto} onClick={() => setAperto((o) => !o)}>
-          ? Aiuto <span className="ml-1 text-xs">?</span>
+          ? Aiuto <span className="ml-1 hidden text-xs lg:inline">?</span>
         </button>
         <RefreshButton />
       </div>

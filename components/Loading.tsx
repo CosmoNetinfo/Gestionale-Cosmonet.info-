@@ -1,6 +1,6 @@
 export function Loading({ text }: { text: string }) {
   return (
-    <div className="mx-auto mt-24 w-[420px] text-center">
+    <div className="mx-auto mt-24 w-[420px] max-w-[90vw] text-center">
       <div className="mb-3 text-sm font-medium text-ink">{text}</div>
       <div className="h-2 w-full overflow-hidden rounded-full bg-primary-soft">
         <div

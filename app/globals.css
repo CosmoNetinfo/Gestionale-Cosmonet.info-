@@ -10,9 +10,51 @@ body {
   font-family: Inter, "Segoe UI", system-ui, -apple-system, sans-serif;
 }
 
-/* Solo desktop: sotto i 1280px la pagina scorre in orizzontale, nessun adattamento mobile. */
+/* Da computer (lg) il menu sta a sinistra; sotto i 1024px diventa un pannello (vedi Shell). */
 body {
-  min-width: 1280px;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+/* Da cellulare: tabelle scorrevoli di lato, colonne dei riquadri ridotte, bottoni comodi al dito. */
+@media (max-width: 1023px) {
+  table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .grid:not([class*="sm:"]):not([class*="md:"]):not([class*="lg:"]).grid-cols-4,
+  .grid:not([class*="sm:"]):not([class*="md:"]):not([class*="lg:"]).grid-cols-5 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .grid:not([class*="sm:"]):not([class*="md:"]):not([class*="lg:"]).grid-cols-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  svg[role="img"] {
+    max-width: 100%;
+    height: auto;
+  }
+  button,
+  select,
+  input:not([type="checkbox"]):not([type="radio"]) {
+    min-height: 40px;
+  }
+  input,
+  select,
+  textarea {
+    font-size: 16px; /* evita lo zoom automatico di iPhone nei campi */
+  }
+}
+@media (max-width: 639px) {
+  .grid:not([class*="sm:"]):not([class*="md:"]):not([class*="lg:"]).grid-cols-2,
+  .grid:not([class*="sm:"]):not([class*="md:"]):not([class*="lg:"]).grid-cols-3 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .grid:not([class*="sm:"]):not([class*="md:"]):not([class*="lg:"]).grid-cols-4,
+  .grid:not([class*="sm:"]):not([class*="md:"]):not([class*="lg:"]).grid-cols-5 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @keyframes cc-progress {
