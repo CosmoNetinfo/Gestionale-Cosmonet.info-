@@ -94,11 +94,14 @@ async function checkUrl(url: string, interno = false): Promise<Check> {
     if (s < 400) return { status: String(s), ok: true, soft: false };
     // Questi codici di solito significano "non parlo con i robot", non "link rotto"
     if ([401, 403, 429, 451, 520, 521, 522, 523, 524, 525, 526, 999].includes(s)) return { status: String(s), ok: false, soft: true };
+    // Un 400 da un sito esterno (WhatsApp, Facebook…) è quasi sempre un rifiuto ai robot; sul mio sito resta un errore vero
+    if (s === 400 && !interno) return { status: String(s), ok: false, soft: true };
     return { status: String(s), ok: false, soft: false };
   } catch (e) {
     const m = e instanceof Error ? e.message : "";
     if (/timeout|aborted/i.test(m)) return { status: "nessuna risposta", ok: false, soft: true };
-    return { status: "non raggiungibile", ok: false, soft: false };
+    // Sito esterno che non si lascia raggiungere da un server (blocco dei robot, rete): non è provato che il link sia rotto
+    return { status: "non raggiungibile", ok: false, soft: !interno };
   }
 }
 

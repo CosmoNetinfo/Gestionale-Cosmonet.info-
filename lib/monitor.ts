@@ -224,7 +224,13 @@ export async function controlloLink(): Promise<string[]> {
   const r = pagina === 1 ? prima : await scanBatch(pagina, 25, 30000);
   const out: string[] = [];
   for (const b of r.rotti) out.push(`⛓ «${b.title}» (ID ${b.articleId}): ${b.url} → ${b.status}`);
-  if (out.length) out.push(`ℹ️ Scansione a rotazione: blocco ${pagina} di ${r.pagine} (25 articoli al giorno, ${r.controllati} link controllati)`);
+  if (out.length) {
+    const nv = new Set(r.nonVerificabili.map((b) => b.url)).size;
+    out.push(
+      `ℹ️ Scansione a rotazione: blocco ${pagina} di ${r.pagine} (25 articoli al giorno, ${r.controllati} link controllati)` +
+        (nv ? `. Non segnalo ${nv} link di siti che rifiutano i controlli automatici (errori 400/403, nessuna risposta): non è provato che siano rotti` : ""),
+    );
+  }
   return out;
 }
 
